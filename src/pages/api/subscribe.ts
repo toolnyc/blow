@@ -70,25 +70,39 @@ export const POST: APIRoute = async ({ request, url }) => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <style>
+    :root { color-scheme: light dark; }
+    @media (prefers-color-scheme: dark) {
+      .email-body { background-color: #000000 !important; }
+    }
+  </style>
 </head>
-<body style="margin: 0; padding: 40px 20px; background-color: #000000; font-family: Arial, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 500px; margin: 0 auto;">
+<body style="margin: 0; padding: 0; background-color: #000000; font-family: Arial, sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #000000;" class="email-body">
     <tr>
-      <td align="center" style="padding-bottom: 30px;">
-        <img src="${wordmarkUrl}" alt="Blow" width="200" style="max-width: 200px; height: auto;" />
-      </td>
-    </tr>
-    <tr>
-      <td align="center" style="padding: 30px 0; color: #ff2845; font-size: 18px;">
-        You're on the list. We'll reach out when we're ready to party.
-      </td>
-    </tr>
-    <tr>
-      <td align="center" style="padding-top: 40px; border-top: 1px solid #333333;">
-        <p style="color: #888888; font-size: 14px; margin: 20px 0 10px 0;">
-          XOXO,<br>The Boss
-        </p>
-        <a href="https://instagram.com/blowme.nyc" style="color: #ff2845; text-decoration: none; font-size: 14px;">@blowme.nyc</a>
+      <td align="center" style="padding: 40px 24px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 400px;">
+          <tr>
+            <td align="center" style="padding-bottom: 32px;">
+              <img src="${wordmarkUrl}" alt="Blow" width="180" style="display: block; max-width: 180px; height: auto;" />
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding: 24px 16px; color: #ff2845; font-size: 18px; line-height: 1.5;">
+              You're on the list. We'll reach out when we're ready to party.
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding: 32px 16px 16px 16px; border-top: 1px solid #333333;">
+              <p style="color: #888888; font-size: 14px; margin: 0 0 12px 0; line-height: 1.4;">
+                XOXO,<br>The Boss
+              </p>
+              <a href="https://instagram.com/blowme.nyc" style="color: #ff2845; text-decoration: none; font-size: 14px;">@blowme.nyc</a>
+            </td>
+          </tr>
+        </table>
       </td>
     </tr>
   </table>
