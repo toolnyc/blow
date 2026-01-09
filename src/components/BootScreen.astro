@@ -1,0 +1,120 @@
+---
+interface Props {
+  duration?: number;
+}
+
+const { duration = 3000 } = Astro.props;
+---
+
+<div id="boot-screen" class="boot-screen">
+  <div class="window boot-window">
+    <div class="title-bar">
+      <div class="title-bar-text">BlowNet™</div>
+    </div>
+    <div class="window-body boot-content">
+      <img src="/wordmark.svg" alt="Blow" class="boot-logo" />
+      <p class="boot-text">Blowing on it<span class="dots"></span></p>
+      <div class="progress-container">
+        <div class="progress-bar"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style define:vars={{ duration: `${duration}ms` }}>
+  .boot-screen {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(180deg, #000080 0%, #1084d0 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    transition: opacity 0.5s ease-out;
+  }
+
+  .boot-screen.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .boot-window {
+    min-width: 280px;
+  }
+
+  .boot-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 24px;
+  }
+
+  .boot-logo {
+    width: 180px;
+    height: auto;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .boot-text {
+    color: #000;
+    font-family: 'Pixelated MS Sans Serif', 'MS Sans Serif', Arial, sans-serif;
+    font-size: 14px;
+    margin: 0;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .dots::after {
+    content: '';
+    animation: dots 1.5s steps(4, end) infinite;
+  }
+
+  @keyframes dots {
+    0% { content: ''; }
+    25% { content: '.'; }
+    50% { content: '..'; }
+    75% { content: '...'; }
+    100% { content: ''; }
+  }
+
+  .progress-container {
+    width: 200px;
+    height: 20px;
+    background: #000;
+    border: 2px solid;
+    border-color: #808080 #ffffff #ffffff #808080;
+    padding: 2px;
+  }
+
+  .progress-bar {
+    height: 100%;
+    width: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      #ff2845 0px,
+      #ff2845 8px,
+      #ff4d66 8px,
+      #ff4d66 10px
+    );
+    animation: progress var(--duration) ease-out forwards;
+  }
+
+  @keyframes progress {
+    0% { width: 0; }
+    100% { width: 100%; }
+  }
+</style>
+
+<script define:vars={{ duration }}>
+  setTimeout(() => {
+    const bootScreen = document.getElementById('boot-screen');
+    if (bootScreen) {
+      bootScreen.classList.add('hidden');
+      setTimeout(() => {
+        bootScreen.remove();
+      }, 500);
+    }
+  }, duration);
+</script>

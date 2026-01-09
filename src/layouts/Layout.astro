@@ -1,0 +1,65 @@
+---
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    <link rel="stylesheet" href="https://unpkg.com/98.css" />
+    <style is:global>
+      * {
+        box-sizing: border-box;
+      }
+
+      img, p, span, h1, h2, h3, h4, h5, h6, label {
+        pointer-events: none;
+        user-select: none;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: linear-gradient(180deg, #000080 0%, #1084d0 100%);
+        font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
+        overflow: hidden;
+      }
+
+      .desktop {
+        position: relative;
+        width: 100%;
+        height: calc(100vh - 28px);
+        padding: 20px;
+        overflow: hidden;
+      }
+
+      /* Brand color accent */
+      .brand-accent {
+        color: #ff2845;
+      }
+
+      /* Custom button with brand color */
+      button.brand {
+        background: #ff2845;
+        color: white;
+      }
+
+      button.brand:active {
+        background: #cc1f37;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="desktop">
+      <slot />
+    </div>
+  </body>
+</html>

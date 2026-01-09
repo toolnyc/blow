@@ -1,0 +1,102 @@
+---
+interface Props {
+  title: string;
+  icon?: string;
+  showControls?: boolean;
+  statusText?: string;
+  draggable?: boolean;
+  id?: string;
+  initialX?: number;
+  initialY?: number;
+}
+
+const {
+  title,
+  icon,
+  showControls = true,
+  statusText,
+  draggable = false,
+  id,
+  initialX,
+  initialY
+} = Astro.props;
+
+const style = (initialX !== undefined || initialY !== undefined)
+  ? `left: ${initialX ?? 50}px; top: ${initialY ?? 50}px;`
+  : undefined;
+---
+
+<div
+  class:list={["window", { draggable }]}
+  id={id}
+  data-window-id={id}
+  data-title={title}
+  data-icon={icon}
+  style={style}
+>
+  <div class="title-bar">
+    {icon && <img src={icon} alt="" class="title-bar-icon" />}
+    <div class="title-bar-text">{title}</div>
+    {showControls && (
+      <div class="title-bar-controls">
+        <button aria-label="Minimize" data-action="minimize"></button>
+        <button aria-label="Maximize" data-action="maximize"></button>
+        <button aria-label="Close" data-action="close"></button>
+      </div>
+    )}
+  </div>
+  <div class="window-body">
+    <slot />
+  </div>
+  {statusText !== undefined && (
+    <div class="status-bar">
+      <p class="status-bar-field" data-status-text>{statusText}</p>
+    </div>
+  )}
+</div>
+
+<style>
+  .window {
+    min-width: 320px;
+    max-width: 400px;
+  }
+
+  .window.maximized {
+    position: fixed !important;
+    inset: 0 0 28px 0 !important;
+    max-width: none;
+    width: 100% !important;
+    height: calc(100% - 28px) !important;
+    z-index: 100 !important;
+  }
+
+  .window.minimized {
+    display: none !important;
+  }
+
+  .title-bar-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 4px;
+  }
+
+  .window-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .window.maximized .window-body {
+    flex: 1;
+    overflow: auto;
+  }
+
+  @media (max-width: 600px) {
+    .window {
+      min-width: 0;
+      max-width: none;
+    }
+  }
+</style>

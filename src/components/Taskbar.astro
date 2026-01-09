@@ -1,0 +1,190 @@
+---
+interface MenuItem {
+  id: string;
+  title: string;
+  icon?: string;
+}
+
+interface Props {
+  menuItems?: MenuItem[];
+}
+
+const { menuItems = [] } = Astro.props;
+---
+
+<div class="taskbar">
+  <div class="start-button-container">
+    <button class="start-button" id="start-button">
+      <img src="/icon.svg" alt="" class="start-icon" />
+      <span>Start</span>
+    </button>
+    <div class="start-menu" id="start-menu">
+      {menuItems.map((item) => (
+        <button class="start-menu-item" data-open-window={item.id}>
+          {item.icon && <img src={item.icon} alt="" class="menu-item-icon" />}
+          <span>{item.title}</span>
+        </button>
+      ))}
+    </div>
+  </div>
+
+  <div class="taskbar-windows" id="taskbar-windows">
+    <!-- Window buttons will be inserted here by JavaScript -->
+  </div>
+
+  <div class="system-tray">
+    <span class="clock" id="taskbar-clock"></span>
+  </div>
+</div>
+
+<style>
+  .taskbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 28px;
+    background: #c0c0c0;
+    border-top: 2px solid #ffffff;
+    display: flex;
+    align-items: center;
+    padding: 2px 2px;
+    gap: 2px;
+    z-index: 1000;
+  }
+
+  .start-button-container {
+    position: relative;
+  }
+
+  .start-button {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    font-weight: bold;
+    font-size: 11px;
+    min-width: 54px;
+  }
+
+  .start-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .start-menu {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    background: #c0c0c0;
+    border: 2px solid;
+    border-color: #ffffff #808080 #808080 #ffffff;
+    min-width: 160px;
+    flex-direction: column;
+  }
+
+  .start-menu.open {
+    display: flex;
+  }
+
+  .start-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border: none;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    font-size: 11px;
+  }
+
+  .start-menu-item:hover {
+    background: #000080;
+    color: #ffffff;
+  }
+
+  .menu-item-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .taskbar-windows {
+    flex: 1;
+    display: flex;
+    gap: 2px;
+    overflow: hidden;
+  }
+
+  .taskbar-windows :global(button) {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+  }
+
+  .taskbar-windows :global(button.active) {
+    border-style: inset;
+    background: #ffffff;
+  }
+
+  .taskbar-windows :global(button img) {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
+  .system-tray {
+    display: flex;
+    align-items: center;
+    padding: 2px 8px;
+    border: 1px solid;
+    border-color: #808080 #ffffff #ffffff #808080;
+    background: #c0c0c0;
+  }
+
+  .clock {
+    font-size: 11px;
+    font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
+  }
+</style>
+
+<script>
+  // Clock
+  function updateClock() {
+    const clock = document.getElementById('taskbar-clock');
+    if (clock) {
+      const now = new Date();
+      clock.textContent = now.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+    }
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // Start menu toggle
+  const startButton = document.getElementById('start-button');
+  const startMenu = document.getElementById('start-menu');
+
+  startButton?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    startMenu?.classList.toggle('open');
+  });
+
+  document.addEventListener('click', () => {
+    startMenu?.classList.remove('open');
+  });
+
+  startMenu?.addEventListener('click', (e) => {
+    e.stopPropagation();
+  });
+</script>

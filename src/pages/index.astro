@@ -1,16 +1,480 @@
 ---
+import Layout from '../layouts/Layout.astro';
+import Window from '../components/Window.astro';
+import BootScreen from '../components/BootScreen.astro';
+import Taskbar from '../components/Taskbar.astro';
 
+const menuItems = [
+  { id: 'subscribe-window', title: 'Subscribe', icon: '/icons/subscribe.svg' },
+  { id: 'mixtapes-window', title: 'Mixtapes', icon: '/icons/mixtapes.svg' },
+  { id: 'events-window', title: 'Events', icon: '/icons/events.svg' },
+];
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<Layout title="BlowNet ™">
+  <BootScreen duration={3000} />
+
+  <!-- Subscribe Window -->
+  <Window
+    title="Subscribe"
+    icon="/icons/subscribe.svg"
+    statusText="Ready"
+    draggable
+    id="subscribe-window"
+    initialX={100}
+    initialY={80}
+  >
+    <img src="/wordmark.svg" alt="Blow" class="wordmark" />
+    <form id="subscribe-form" class="field-row-stacked">
+      <label for="email">Enter your email:</label>
+      <input type="email" id="email" name="email" required placeholder="you@example.com" />
+    </form>
+    <button id="submit-btn">Subscribe</button>
+  </Window>
+
+  <!-- Mixtapes Window -->
+  <Window
+    title="Mixtapes"
+    icon="/icons/mixtapes.svg"
+    draggable
+    id="mixtapes-window"
+    initialX={450}
+    initialY={100}
+  >
+    <div class="mixtapes-content">
+      <iframe
+        width="100%"
+        height="300"
+        scrolling="no"
+        frameborder="no"
+        allow="autoplay"
+        src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/honey-trap/sets/honey-trap-on-kiosk-radio&color=%23ff2845&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true"
+      ></iframe>
+    </div>
+  </Window>
+
+  <!-- Events Window -->
+  <Window
+    title="Events"
+    icon="/icons/events.svg"
+    draggable
+    id="events-window"
+    initialX={200}
+    initialY={250}
+  >
+    <div class="events-content">
+      <p>TBA</p>
+      <p class="hint">Check back for upcoming events</p>
+    </div>
+  </Window>
+
+  <!-- Success Dialog -->
+  <div id="success-dialog" class="dialog-overlay" style="display: none;">
+    <div class="window dialog">
+      <div class="title-bar">
+        <div class="title-bar-text">Success</div>
+      </div>
+      <div class="window-body dialog-body">
+        <p>You're on the list.</p>
+        <button id="success-ok">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Dialog -->
+  <div id="error-dialog" class="dialog-overlay" style="display: none;">
+    <div class="window dialog">
+      <div class="title-bar">
+        <div class="title-bar-text">Error</div>
+      </div>
+      <div class="window-body dialog-body">
+        <p id="error-message">Something went wrong.</p>
+        <button id="error-ok">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <Taskbar menuItems={menuItems} />
+</Layout>
+
+<style>
+  .wordmark {
+    max-width: 280px;
+    height: auto;
+  }
+
+  .field-row-stacked {
+    width: 100%;
+  }
+
+  .field-row-stacked input {
+    width: 100%;
+  }
+
+  #submit-btn {
+    min-width: 100px;
+  }
+
+  .mixtapes-content {
+    width: 100%;
+    min-width: 300px;
+  }
+
+  .mixtapes-content iframe {
+    pointer-events: auto;
+  }
+
+  .events-content {
+    text-align: center;
+    padding: 20px;
+  }
+
+  .hint {
+    color: #808080;
+    font-size: 11px;
+    margin-top: 8px;
+  }
+
+  .dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 500;
+  }
+
+  .dialog {
+    min-width: 250px;
+  }
+
+  .dialog-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+  }
+
+  .dialog-body button {
+    min-width: 80px;
+  }
+
+  :global(.window.draggable) {
+    position: absolute;
+    cursor: default;
+  }
+
+  :global(.window.draggable .title-bar) {
+    cursor: grab;
+  }
+
+  :global(.window.draggable .title-bar:active) {
+    cursor: grabbing;
+  }
+
+  :global(.window.focused) {
+    z-index: 10;
+  }
+
+  /* Mobile responsive */
+  @media (max-width: 600px) {
+    :global(.window.draggable) {
+      width: calc(100vw - 20px);
+      max-width: none;
+    }
+  }
+</style>
+
+<script>
+  // Window Management System
+  interface WindowState {
+    id: string;
+    title: string;
+    icon: string;
+    isMinimized: boolean;
+    isMaximized: boolean;
+    isOpen: boolean;
+    zIndex: number;
+  }
+
+  const windows: Map<string, WindowState> = new Map();
+  let topZIndex = 1;
+
+  // Initialize windows
+  document.querySelectorAll('[data-window-id]').forEach((el, index) => {
+    const windowEl = el as HTMLElement;
+    const id = windowEl.dataset.windowId!;
+    const title = windowEl.dataset.title || id;
+    const icon = windowEl.dataset.icon || '';
+
+    windows.set(id, {
+      id,
+      title,
+      icon,
+      isMinimized: false,
+      isMaximized: false,
+      isOpen: true,
+      zIndex: 1,
+    });
+
+    // Bounds check - reposition if off screen
+    const rect = windowEl.getBoundingClientRect();
+    const maxX = window.innerWidth - 50;
+    const maxY = window.innerHeight - 78; // account for taskbar
+
+    if (rect.left > maxX || rect.right > window.innerWidth) {
+      windowEl.style.left = `${Math.min(10 + index * 20, maxX)}px`;
+    }
+    if (rect.top > maxY) {
+      windowEl.style.top = `${Math.min(20 + index * 40, maxY)}px`;
+    }
+
+    // Make window draggable
+    makeDraggable(windowEl);
+
+    // Focus on click
+    windowEl.addEventListener('mousedown', () => focusWindow(id));
+
+    // Wire up control buttons
+    windowEl.querySelectorAll('[data-action]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const action = (btn as HTMLElement).dataset.action;
+        if (action === 'minimize') minimizeWindow(id);
+        if (action === 'maximize') toggleMaximize(id);
+        if (action === 'close') closeWindow(id);
+      });
+    });
+  });
+
+  function makeDraggable(windowEl: HTMLElement) {
+    const titleBar = windowEl.querySelector('.title-bar') as HTMLElement;
+    if (!titleBar) return;
+
+    let isDragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    function startDrag(clientX: number, clientY: number, target: EventTarget | null) {
+      if ((target as HTMLElement)?.closest('.title-bar-controls')) return;
+      if (windowEl.classList.contains('maximized')) return;
+      isDragging = true;
+      offsetX = clientX - windowEl.offsetLeft;
+      offsetY = clientY - windowEl.offsetTop;
+    }
+
+    function moveDrag(clientX: number, clientY: number) {
+      if (!isDragging) return;
+      windowEl.style.left = `${clientX - offsetX}px`;
+      windowEl.style.top = `${clientY - offsetY}px`;
+    }
+
+    function endDrag() {
+      isDragging = false;
+    }
+
+    // Mouse events
+    titleBar.addEventListener('mousedown', (e) => startDrag(e.clientX, e.clientY, e.target));
+    document.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
+    document.addEventListener('mouseup', endDrag);
+
+    // Touch events
+    titleBar.addEventListener('touchstart', (e) => {
+      const touch = e.touches[0];
+      startDrag(touch.clientX, touch.clientY, e.target);
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+      if (!isDragging) return;
+      const touch = e.touches[0];
+      moveDrag(touch.clientX, touch.clientY);
+    }, { passive: true });
+
+    document.addEventListener('touchend', endDrag);
+  }
+
+  function focusWindow(id: string) {
+    const state = windows.get(id);
+    if (!state) return;
+
+    topZIndex++;
+    state.zIndex = topZIndex;
+
+    // Update all windows
+    windows.forEach((s, windowId) => {
+      const el = document.getElementById(windowId);
+      if (el) {
+        el.style.zIndex = String(s.zIndex);
+        el.classList.toggle('focused', windowId === id);
+      }
+    });
+
+    updateTaskbar();
+  }
+
+  function minimizeWindow(id: string) {
+    const state = windows.get(id);
+    const el = document.getElementById(id);
+    if (!state || !el) return;
+
+    state.isMinimized = true;
+    el.classList.add('minimized');
+    updateTaskbar();
+  }
+
+  function restoreWindow(id: string) {
+    const state = windows.get(id);
+    const el = document.getElementById(id);
+    if (!state || !el) return;
+
+    state.isMinimized = false;
+    state.isOpen = true;
+    el.classList.remove('minimized');
+    el.style.display = '';
+    focusWindow(id);
+  }
+
+  function toggleMaximize(id: string) {
+    const state = windows.get(id);
+    const el = document.getElementById(id);
+    if (!state || !el) return;
+
+    state.isMaximized = !state.isMaximized;
+    el.classList.toggle('maximized', state.isMaximized);
+  }
+
+  function closeWindow(id: string) {
+    const state = windows.get(id);
+    const el = document.getElementById(id);
+    if (!state || !el) return;
+
+    state.isOpen = false;
+    state.isMinimized = false;
+    el.style.display = 'none';
+    el.classList.remove('minimized', 'maximized');
+    updateTaskbar();
+  }
+
+  function openWindow(id: string) {
+    const state = windows.get(id);
+    const el = document.getElementById(id);
+    if (!state || !el) return;
+
+    state.isOpen = true;
+    state.isMinimized = false;
+    el.style.display = '';
+    el.classList.remove('minimized');
+    focusWindow(id);
+  }
+
+  function updateTaskbar() {
+    const container = document.getElementById('taskbar-windows');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    windows.forEach((state) => {
+      if (!state.isOpen) return;
+
+      const btn = document.createElement('button');
+      if (state.icon) {
+        const img = document.createElement('img');
+        img.src = state.icon;
+        img.alt = '';
+        btn.appendChild(img);
+      }
+      const span = document.createElement('span');
+      span.textContent = state.title;
+      btn.appendChild(span);
+
+      if (!state.isMinimized) {
+        btn.classList.add('active');
+      }
+
+      btn.addEventListener('click', () => {
+        if (state.isMinimized) {
+          restoreWindow(state.id);
+        } else {
+          minimizeWindow(state.id);
+        }
+      });
+
+      container.appendChild(btn);
+    });
+  }
+
+  // Start menu - open windows
+  document.querySelectorAll('[data-open-window]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = (btn as HTMLElement).dataset.openWindow!;
+      openWindow(id);
+      document.getElementById('start-menu')?.classList.remove('open');
+    });
+  });
+
+  // Initial taskbar update
+  updateTaskbar();
+
+  // Subscribe form logic
+  const emailInput = document.getElementById('email') as HTMLInputElement;
+  const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
+  const statusText = document.querySelector('[data-status-text]') as HTMLParagraphElement;
+
+  const successDialog = document.getElementById('success-dialog') as HTMLDivElement;
+  const errorDialog = document.getElementById('error-dialog') as HTMLDivElement;
+  const errorMessage = document.getElementById('error-message') as HTMLParagraphElement;
+
+  const successOk = document.getElementById('success-ok') as HTMLButtonElement;
+  const errorOk = document.getElementById('error-ok') as HTMLButtonElement;
+
+  submitBtn?.addEventListener('click', async () => {
+    const email = emailInput.value.trim();
+
+    if (!email || !emailInput.checkValidity()) {
+      errorMessage.textContent = 'Please enter a valid email address.';
+      errorDialog.style.display = 'flex';
+      return;
+    }
+
+    submitBtn.disabled = true;
+    if (statusText) statusText.textContent = 'Subscribing...';
+
+    try {
+      const response = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        if (statusText) statusText.textContent = 'Subscribed!';
+        emailInput.value = '';
+        successDialog.style.display = 'flex';
+      } else {
+        if (statusText) statusText.textContent = 'Error';
+        errorMessage.textContent = data.error || 'Something went wrong.';
+        errorDialog.style.display = 'flex';
+      }
+    } catch {
+      if (statusText) statusText.textContent = 'Error';
+      errorMessage.textContent = 'Network error. Please try again.';
+      errorDialog.style.display = 'flex';
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+  successOk?.addEventListener('click', () => {
+    successDialog.style.display = 'none';
+    if (statusText) statusText.textContent = 'Ready';
+  });
+
+  errorOk?.addEventListener('click', () => {
+    errorDialog.style.display = 'none';
+    if (statusText) statusText.textContent = 'Ready';
+  });
+</script>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">
+  <!-- Envelope icon -->
+  <rect x="1" y="3" width="14" height="10" fill="#ffffcc" stroke="#000" stroke-width="1"/>
+  <!-- Flap -->
+  <path d="M1 3 L8 8 L15 3" fill="none" stroke="#000" stroke-width="1"/>
+  <!-- Shadow on flap -->
+  <path d="M2 4 L8 8.5 L14 4" fill="none" stroke="#c0c0c0" stroke-width="0.5"/>
+</svg>
