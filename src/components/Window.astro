@@ -6,8 +6,8 @@ interface Props {
   statusText?: string;
   draggable?: boolean;
   id?: string;
-  initialX?: number;
-  initialY?: number;
+  initialX?: number | string;
+  initialY?: number | string;
 }
 
 const {
@@ -21,8 +21,13 @@ const {
   initialY
 } = Astro.props;
 
+const formatPos = (val: number | string | undefined, fallback: number) => {
+  if (val === undefined) return `${fallback}px`;
+  return typeof val === 'number' ? `${val}px` : val;
+};
+
 const style = (initialX !== undefined || initialY !== undefined)
-  ? `left: ${initialX ?? 50}px; top: ${initialY ?? 50}px;`
+  ? `left: ${formatPos(initialX, 50)}; top: ${formatPos(initialY, 50)};`
   : undefined;
 ---
 

@@ -21,8 +21,8 @@ const menuItems = [
     statusText="Ready"
     draggable
     id="subscribe-window"
-    initialX={100}
-    initialY={80}
+    initialX="calc(50vw - 180px)"
+    initialY={120}
   >
     <img src="/wordmark.svg" alt="Blow" class="wordmark" />
     <form id="subscribe-form" class="field-row-stacked">
@@ -38,8 +38,8 @@ const menuItems = [
     icon="/icons/mixtapes.svg"
     draggable
     id="mixtapes-window"
-    initialX={450}
-    initialY={100}
+    initialX="calc(50vw + 100px)"
+    initialY={80}
   >
     <div class="mixtapes-content">
       <iframe
@@ -48,7 +48,7 @@ const menuItems = [
         scrolling="no"
         frameborder="no"
         allow="autoplay"
-        src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/honey-trap/sets/honey-trap-on-kiosk-radio&color=%23ff2845&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true"
+        src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/conduit000/sets/blow-tm&color=%23ff2845&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true"
       ></iframe>
     </div>
   </Window>
@@ -59,8 +59,8 @@ const menuItems = [
     icon="/icons/events.svg"
     draggable
     id="events-window"
-    initialX={200}
-    initialY={250}
+    initialX="calc(50vw - 280px)"
+    initialY={320}
   >
     <div class="events-content">
       <p>TBA</p>
@@ -181,7 +181,7 @@ const menuItems = [
   /* Mobile responsive */
   @media (max-width: 600px) {
     :global(.window.draggable) {
-      width: calc(100vw - 20px);
+      width: calc(100vw - 40px);
       max-width: none;
     }
   }
@@ -218,6 +218,20 @@ const menuItems = [
       isOpen: true,
       zIndex: 1,
     });
+
+    // Mobile positioning
+    const isMobile = window.innerWidth <= 600;
+    if (isMobile) {
+      const mobilePositions: Record<string, number> = {
+        'subscribe-window': 20,
+        'mixtapes-window': 220,
+        'events-window': 560,
+      };
+      windowEl.style.left = '20px';
+      if (mobilePositions[id] !== undefined) {
+        windowEl.style.top = `${mobilePositions[id]}px`;
+      }
+    }
 
     // Bounds check - reposition if off screen
     const rect = windowEl.getBoundingClientRect();
@@ -416,6 +430,9 @@ const menuItems = [
 
   // Initial taskbar update
   updateTaskbar();
+
+  // Focus subscribe window on load
+  focusWindow('subscribe-window');
 
   // Subscribe form logic
   const emailInput = document.getElementById('email') as HTMLInputElement;

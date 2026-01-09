@@ -11,7 +11,9 @@
   "dependencies": {
     "98.css": "^0.1.21",
     "@astrojs/vercel": "^9.0.3",
+    "@supabase/supabase-js": "^2.90.1",
     "astro": "^5.16.8",
+    "postgres": "^3.4.8",
     "resend": "^6.7.0"
   }
 }

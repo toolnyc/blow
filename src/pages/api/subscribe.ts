@@ -1,9 +1,14 @@
 import type { APIRoute } from 'astro';
 import { Resend } from 'resend';
+import { createClient } from '@supabase/supabase-js';
 
 export const prerender = false;
 
 const resend = new Resend(import.meta.env.RESEND_API_KEY);
+const supabase = createClient(
+  import.meta.env.SUPABASE_URL,
+  import.meta.env.SUPABASE_ANON_KEY
+);
 
 export const POST: APIRoute = async ({ request }) => {
   try {
@@ -25,14 +30,34 @@ export const POST: APIRoute = async ({ request }) => {
       });
     }
 
-    // Add contact to Resend audience
+    // Save to Supabase database
+    const { error: dbError } = await supabase
+      .from('subscribers')
+      .upsert(
+        { email, subscribed_at: new Date().toISOString() },
+        { onConflict: 'email' }
+      );
+
+    if (dbError) {
+      console.error('Failed to save to database:', dbError);
+      return new Response(JSON.stringify({ error: 'Failed to save subscription' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Add contact to Resend audience (non-blocking, may fail with restricted API key)
     const audienceId = import.meta.env.RESEND_AUDIENCE_ID;
     if (audienceId) {
-      await resend.contacts.create({
-        email,
-        audienceId,
-        unsubscribed: false,
-      });
+      try {
+        await resend.contacts.create({
+          email,
+          audienceId,
+          unsubscribed: false,
+        });
+      } catch (contactError) {
+        console.warn('Could not add contact to audience:', contactError);
+      }
     }
 
     // Send confirmation email
