@@ -70,17 +70,9 @@ export const POST: APIRoute = async ({ request, url }) => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="color-scheme" content="light dark">
-  <meta name="supported-color-schemes" content="light dark">
-  <style>
-    :root { color-scheme: light dark; }
-    @media (prefers-color-scheme: dark) {
-      .email-body { background-color: #000000 !important; }
-    }
-  </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #000000; font-family: Arial, sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #000000;" class="email-body">
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
     <tr>
       <td align="center" style="padding: 40px 24px;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 400px;">
@@ -95,7 +87,7 @@ export const POST: APIRoute = async ({ request, url }) => {
             </td>
           </tr>
           <tr>
-            <td align="center" style="padding: 32px 16px 16px 16px; border-top: 1px solid #333333;">
+            <td align="center" style="padding: 32px 16px 16px 16px; border-top: 1px solid #cccccc;">
               <p style="color: #888888; font-size: 14px; margin: 0 0 12px 0; line-height: 1.4;">
                 XOXO,<br>The Boss
               </p>
