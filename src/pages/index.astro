@@ -118,10 +118,13 @@ const menuItems = [
   .mixtapes-content {
     width: 100%;
     min-width: 300px;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
   }
 
   .mixtapes-content iframe {
     pointer-events: auto;
+    touch-action: pan-y;
   }
 
   .events-content {
