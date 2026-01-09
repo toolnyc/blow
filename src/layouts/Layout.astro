@@ -12,8 +12,17 @@ const { title } = Astro.props;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icon@3x-8.png" />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
+
+    <!-- Open Graph / Link Previews -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content="DIY party series in New York" />
+    <meta property="og:image" content="https://blow.nyc/icon@3x-8.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:image" content="https://blow.nyc/icon@3x-8.png" />
     <link rel="stylesheet" href="https://unpkg.com/98.css" />
     <style is:global>
       * {
