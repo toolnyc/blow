@@ -8,7 +8,10 @@ export default defineConfig({
   adapter: vercel(),
   vite: {
     ssr: {
-      noExternal: ['@supabase/supabase-js'],
+      noExternal: ['@supabase/supabase-js', 'tslib'],
+    },
+    optimizeDeps: {
+      include: ['tslib'],
     },
   },
 });
