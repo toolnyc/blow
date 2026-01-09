@@ -184,6 +184,10 @@ const menuItems = [
       width: calc(100vw - 40px);
       max-width: none;
     }
+
+    .field-row-stacked input {
+      font-size: 16px;
+    }
   }
 </style>
 
@@ -430,6 +434,16 @@ const menuItems = [
 
   // Initial taskbar update
   updateTaskbar();
+
+  // Center subscribe window on mobile
+  const isMobile = window.innerWidth <= 600;
+  if (isMobile) {
+    const subscribeEl = document.getElementById('subscribe-window');
+    if (subscribeEl) {
+      subscribeEl.style.left = '20px';
+      subscribeEl.style.top = '20px';
+    }
+  }
 
   // Focus subscribe window on load
   focusWindow('subscribe-window');
