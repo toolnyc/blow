@@ -153,7 +153,7 @@ const { menuItems = [] } = Astro.props;
     font-size: 11px;
     font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
     font-variant-numeric: tabular-nums;
-    min-width: 12ch;
+    min-width: 7ch;
     text-align: right;
   }
 </style>
@@ -174,14 +174,12 @@ const { menuItems = [] } = Astro.props;
 
     const days = Math.floor(diff / 86400000);
     const hrs = Math.floor((diff % 86400000) / 3600000);
-    const mins = Math.floor((diff % 3600000) / 60000);
-    const secs = Math.floor((diff % 60000) / 1000);
 
     const pad = (n: number) => String(n).padStart(2, '0');
-    clock.textContent = `${days}d ${pad(hrs)}h ${pad(mins)}m ${pad(secs)}s`;
+    clock.textContent = `${days}d ${pad(hrs)}h`;
   }
   updateCountdown();
-  setInterval(updateCountdown, 1000);
+  setInterval(updateCountdown, 60000);
 
   // Start menu toggle
   const startButton = document.getElementById('start-button');
