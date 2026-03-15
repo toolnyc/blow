@@ -152,24 +152,36 @@ const { menuItems = [] } = Astro.props;
   .clock {
     font-size: 11px;
     font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
+    font-variant-numeric: tabular-nums;
+    min-width: 12ch;
+    text-align: right;
   }
 </style>
 
 <script>
-  // Clock
-  function updateClock() {
+  // Countdown to March 21, 2026 at 10:00 PM Eastern
+  const TARGET = new Date('2026-03-21T22:00:00-04:00').getTime();
+
+  function updateCountdown() {
     const clock = document.getElementById('taskbar-clock');
-    if (clock) {
-      const now = new Date();
-      clock.textContent = now.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      });
+    if (!clock) return;
+
+    const diff = TARGET - Date.now();
+    if (diff <= 0) {
+      clock.textContent = 'NOW BLOWING';
+      return;
     }
+
+    const days = Math.floor(diff / 86400000);
+    const hrs = Math.floor((diff % 86400000) / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
+    const secs = Math.floor((diff % 60000) / 1000);
+
+    const pad = (n: number) => String(n).padStart(2, '0');
+    clock.textContent = `${days}d ${pad(hrs)}h ${pad(mins)}m ${pad(secs)}s`;
   }
-  updateClock();
-  setInterval(updateClock, 1000);
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
 
   // Start menu toggle
   const startButton = document.getElementById('start-button');
