@@ -154,19 +154,27 @@ function rowClass(checked: number, total: number) {
         noResults.style.display = visible === 0 ? 'block' : 'none';
       });
 
-      // PIN modal
+      // PIN modal — generic, calls pinCallback on success
       const PIN = '0803';
       const pinModal = document.getElementById('pin-modal');
       const pinInput = document.getElementById('pin-input');
       const pinError = document.getElementById('pin-error');
       const pinSubmit = document.getElementById('pin-submit');
       const pinCancel = document.getElementById('pin-cancel');
+      let pinCallback = null;
+
+      function openPin(callback) {
+        pinCallback = callback;
+        pinInput.value = '';
+        pinError.classList.add('hidden');
+        pinModal.classList.remove('hidden');
+        pinInput.focus();
+      }
 
       function checkPin() {
         if (pinInput.value === PIN) {
           pinModal.classList.add('hidden');
-          addForm.classList.remove('hidden');
-          addName.focus();
+          if (pinCallback) { pinCallback(); pinCallback = null; }
         } else {
           pinError.classList.remove('hidden');
           pinInput.value = '';
@@ -178,6 +186,7 @@ function rowClass(checked: number, total: number) {
       pinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkPin(); });
       pinCancel.addEventListener('click', () => {
         pinModal.classList.add('hidden');
+        pinCallback = null;
         pinInput.value = '';
         pinError.classList.add('hidden');
       });
@@ -190,10 +199,7 @@ function rowClass(checked: number, total: number) {
       const addCancel = document.getElementById('add-cancel');
 
       addToggle.addEventListener('click', () => {
-        pinInput.value = '';
-        pinError.classList.add('hidden');
-        pinModal.classList.remove('hidden');
-        pinInput.focus();
+        openPin(() => { addForm.classList.remove('hidden'); addName.focus(); });
       });
 
       addCancel.addEventListener('click', () => {
@@ -263,24 +269,23 @@ function rowClass(checked: number, total: number) {
 
         if (action === 'delete') {
           const name = btn.dataset.name || 'this guest';
-          if (!confirm(`Remove ${name} from the list?`)) return;
-          const row = document.getElementById(`g-${id}`);
-          const checkedCount = row ? parseInt(row.dataset.checked, 10) : 0;
-          btn.disabled = true;
-          try {
-            const res = await fetch('/api/delete-guest', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id }),
-            });
-            if (!res.ok) throw new Error('failed');
-            if (row) row.remove();
-            peopleIn = Math.max(peopleIn - checkedCount, 0);
-            statsEl.textContent = peopleIn;
-          } catch {
-            btn.disabled = false;
-            alert('Could not remove guest');
-          }
+          openPin(async () => {
+            const row = document.getElementById(`g-${id}`);
+            const checkedCount = row ? parseInt(row.dataset.checked, 10) : 0;
+            try {
+              const res = await fetch('/api/delete-guest', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id }),
+              });
+              if (!res.ok) throw new Error('failed');
+              if (row) row.remove();
+              peopleIn = Math.max(peopleIn - checkedCount, 0);
+              statsEl.textContent = peopleIn;
+            } catch {
+              alert('Could not remove ' + name);
+            }
+          });
           return;
         }
         const row = document.getElementById(`g-${id}`);
