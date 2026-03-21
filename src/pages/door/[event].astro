@@ -121,7 +121,7 @@ function rowClass(checked: number, total: number) {
     </div>
 
     <div id="qr-modal" class="qr-modal hidden">
-      <img src="/door-qr-march21.png" class="qr-img" alt="Door QR" />
+      <img src="/door-qr-march21.png" class="qr-img" alt="Door QR" draggable="false" />
     </div>
 
     <div id="pin-modal" class="pin-modal hidden">
@@ -159,10 +159,18 @@ function rowClass(checked: number, total: number) {
         noResults.style.display = visible === 0 ? 'block' : 'none';
       });
 
-      // QR fullscreen
+      // QR fullscreen — preload so it's instant on first tap
       const qrModal = document.getElementById('qr-modal');
-      document.getElementById('qr-toggle').addEventListener('click', () => qrModal.classList.remove('hidden'));
+      const qrImg = qrModal.querySelector('img');
+      new Image().src = qrImg.src; // warm the cache
+
+      document.getElementById('qr-toggle').addEventListener('click', (e) => {
+        e.stopPropagation();
+        qrModal.classList.remove('hidden');
+      });
       qrModal.addEventListener('click', () => qrModal.classList.add('hidden'));
+      qrImg.addEventListener('contextmenu', (e) => e.preventDefault());
+      qrImg.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
 
       // PIN modal — generic, calls pinCallback on success
       const PIN = '0803';
