@@ -24,6 +24,8 @@ if (error || !guests) {
 
 const totalPeople = guests.reduce((s, g) => s + (g.tickets as number), 0);
 const checkedInPeople = guests.reduce((s, g) => s + (g.checked_in_count as number), 0);
+const WALKIN_LIMIT = 20;
+const walkInCount = guests.filter((g) => g.ticket_type === 'Walk-in').length;
 
 const qrSvg = await QRCode.toString('https://buy.stripe.com/aFadRb9gbfUW0vafoFb3q02', {
   type: 'svg',
@@ -63,7 +65,11 @@ function rowClass(checked: number, total: number) {
           spellcheck="false"
         />
         <button id="qr-toggle">QR</button>
-        <button id="add-toggle">+ Add</button>
+        <button id="add-toggle" disabled={walkInCount >= WALKIN_LIMIT}>+ Add</button>
+      </div>
+      <div id="walkin-bar">
+        Walk-ins: <span id="walkin-count">{walkInCount}</span> / {WALKIN_LIMIT}
+        {walkInCount >= WALKIN_LIMIT && <span id="walkin-full"> — FULL</span>}
       </div>
       <div id="add-form" class="add-form hidden">
         <input
@@ -133,7 +139,7 @@ function rowClass(checked: number, total: number) {
 
     <div id="pin-modal" class="pin-modal hidden">
       <div class="pin-card">
-        <div class="pin-title">Enter PIN to add guest</div>
+        <div class="pin-title" id="pin-title">Enter PIN to add guest</div>
         <input type="password" id="pin-input" inputmode="numeric" maxlength="4" placeholder="••••" />
         <div class="pin-error hidden" id="pin-error">Incorrect PIN</div>
         <div class="pin-buttons">
@@ -143,9 +149,27 @@ function rowClass(checked: number, total: number) {
       </div>
     </div>
 
-    <script define:vars={{ initCheckedIn: checkedInPeople, totalPeople, currentEvent: event }}>
+    <script define:vars={{ initCheckedIn: checkedInPeople, totalPeople, currentEvent: event, initWalkIns: walkInCount, walkinLimit: WALKIN_LIMIT }}>
       let peopleIn = initCheckedIn;
+      let walkIns = initWalkIns;
       const statsEl = document.getElementById('stats-in');
+      const walkinCountEl = document.getElementById('walkin-count');
+      const addToggle = document.getElementById('add-toggle');
+
+      function updateWalkinBar() {
+        walkinCountEl.textContent = walkIns;
+        const full = walkIns >= walkinLimit;
+        addToggle.disabled = full;
+        let fullEl = document.getElementById('walkin-full');
+        if (full && !fullEl) {
+          fullEl = document.createElement('span');
+          fullEl.id = 'walkin-full';
+          fullEl.textContent = ' — FULL';
+          document.getElementById('walkin-bar').appendChild(fullEl);
+        } else if (!full && fullEl) {
+          fullEl.remove();
+        }
+      }
 
       // Search
       const searchEl = document.getElementById('search');
@@ -184,8 +208,11 @@ function rowClass(checked: number, total: number) {
       const pinCancel = document.getElementById('pin-cancel');
       let pinCallback = null;
 
-      function openPin(callback) {
+      const pinTitle = document.getElementById('pin-title');
+
+      function openPin(callback, label = 'add guest') {
         pinCallback = callback;
+        pinTitle.textContent = `Enter PIN to ${label}`;
         pinInput.value = '';
         pinError.classList.add('hidden');
         pinModal.classList.remove('hidden');
@@ -213,7 +240,6 @@ function rowClass(checked: number, total: number) {
       });
 
       // Add guest form toggle
-      const addToggle = document.getElementById('add-toggle');
       const addForm = document.getElementById('add-form');
       const addName = document.getElementById('add-name');
       const addSubmit = document.getElementById('add-submit');
@@ -234,6 +260,10 @@ function rowClass(checked: number, total: number) {
       async function submitAddGuest() {
         const name = addName.value.trim();
         if (!name) { addName.focus(); return; }
+        if (walkIns >= walkinLimit) {
+          alert(`Walk-in limit of ${walkinLimit} reached.`);
+          return;
+        }
 
         addSubmit.disabled = true;
         addSubmit.textContent = '…';
@@ -266,6 +296,9 @@ function rowClass(checked: number, total: number) {
           const list = document.getElementById('guest-list');
           list.insertBefore(div, list.firstChild);
 
+          walkIns++;
+          updateWalkinBar();
+
           addName.value = '';
           addForm.classList.add('hidden');
         } catch (err) {
@@ -293,6 +326,7 @@ function rowClass(checked: number, total: number) {
           openPin(async () => {
             const row = document.getElementById(`g-${id}`);
             const checkedCount = row ? parseInt(row.dataset.checked, 10) : 0;
+            const isWalkin = row ? row.querySelector('.pill.walkin') !== null : false;
             try {
               const res = await fetch('/api/delete-guest', {
                 method: 'POST',
@@ -303,10 +337,11 @@ function rowClass(checked: number, total: number) {
               if (row) row.remove();
               peopleIn = Math.max(peopleIn - checkedCount, 0);
               statsEl.textContent = peopleIn;
+              if (isWalkin) { walkIns = Math.max(walkIns - 1, 0); updateWalkinBar(); }
             } catch {
               alert('Could not remove ' + name);
             }
-          });
+          }, 'remove guest');
           return;
         }
         const row = document.getElementById(`g-${id}`);
@@ -481,6 +516,19 @@ function rowClass(checked: number, total: number) {
   }
 
   #add-toggle:active { background: #3a3a3a; }
+  #add-toggle:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  #walkin-bar {
+    font-size: 12px;
+    color: #666;
+    margin-top: 8px;
+    text-align: right;
+  }
+
+  #walkin-full {
+    color: #ff2845;
+    font-weight: 700;
+  }
 
   .add-form {
     display: flex;
