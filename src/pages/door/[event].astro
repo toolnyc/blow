@@ -21,8 +21,8 @@ if (error || !guests) {
   return new Response('Could not load guest list', { status: 500 });
 }
 
-const totalGuests = guests.length;
-const checkedInGuests = guests.filter((g) => (g.checked_in_count as number) > 0).length;
+const totalPeople = guests.reduce((s, g) => s + (g.tickets as number), 0);
+const checkedInPeople = guests.reduce((s, g) => s + (g.checked_in_count as number), 0);
 
 function rowClass(checked: number, total: number) {
   if (checked === 0) return '';
@@ -43,7 +43,7 @@ function rowClass(checked: number, total: number) {
       <div class="header-top">
         <img src="/wordmark.svg" class="logo" alt="Blow" />
         <span id="stats">
-          <span id="stats-in">{checkedInGuests}</span> / {totalGuests} guests in
+          <span id="stats-in">{checkedInPeople}</span> / {totalPeople} people in
         </span>
       </div>
       <div class="search-row">
@@ -117,8 +117,8 @@ function rowClass(checked: number, total: number) {
       <div id="no-results">No guests found</div>
     </div>
 
-    <script define:vars={{ initCheckedIn: checkedInGuests, totalGuests, currentEvent: event }}>
-      let guestsIn = initCheckedIn;
+    <script define:vars={{ initCheckedIn: checkedInPeople, totalPeople, currentEvent: event }}>
+      let peopleIn = initCheckedIn;
       const statsEl = document.getElementById('stats-in');
 
       // Search
@@ -226,14 +226,8 @@ function rowClass(checked: number, total: number) {
           ? Math.min(checked + 1, tickets)
           : Math.max(checked - 1, 0);
 
-        // Track guests in (not individual ticket count)
-        const wasIn = checked > 0;
-        const willBeIn = newChecked > 0;
-
         applyRow(row, id, newChecked, tickets);
-
-        if (!wasIn && willBeIn) statsEl.textContent = guestsIn + 1;
-        else if (wasIn && !willBeIn) statsEl.textContent = Math.max(guestsIn - 1, 0);
+        statsEl.textContent = action === 'in' ? peopleIn + 1 : Math.max(peopleIn - 1, 0);
 
         try {
           const res = await fetch('/api/checkin', {
@@ -242,12 +236,11 @@ function rowClass(checked: number, total: number) {
             body: JSON.stringify({ id, action }),
           });
           if (!res.ok) throw new Error('failed');
-          if (!wasIn && willBeIn) guestsIn++;
-          else if (wasIn && !willBeIn) guestsIn = Math.max(guestsIn - 1, 0);
-          statsEl.textContent = guestsIn;
+          peopleIn = action === 'in' ? peopleIn + 1 : Math.max(peopleIn - 1, 0);
+          statsEl.textContent = peopleIn;
         } catch {
           applyRow(row, id, checked, tickets);
-          statsEl.textContent = guestsIn;
+          statsEl.textContent = peopleIn;
         }
       });
 
