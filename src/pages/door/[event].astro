@@ -21,8 +21,8 @@ if (error || !guests) {
   return new Response('Could not load guest list', { status: 500 });
 }
 
-const totalTickets = guests.reduce((sum, g) => sum + (g.tickets as number), 0);
-const checkedInTickets = guests.reduce((sum, g) => sum + (g.checked_in_count as number), 0);
+const totalGuests = guests.length;
+const checkedInGuests = guests.filter((g) => (g.checked_in_count as number) > 0).length;
 
 function rowClass(checked: number, total: number) {
   if (checked === 0) return '';
@@ -37,189 +37,37 @@ function rowClass(checked: number, total: number) {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <title>Blow — Door</title>
-    <style>
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        background: #f0f0f0;
-        color: #111;
-      }
-
-      #header {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background: #111;
-        color: white;
-        padding: 12px 16px 10px;
-      }
-
-      .header-top {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-        margin-bottom: 10px;
-      }
-
-      .brand {
-        font-size: 22px;
-        font-weight: 900;
-        letter-spacing: 0.08em;
-        color: #ff2845;
-      }
-
-      #stats {
-        font-size: 13px;
-        color: #888;
-      }
-
-      #stats-in {
-        color: white;
-        font-weight: 700;
-      }
-
-      #search {
-        width: 100%;
-        padding: 9px 12px;
-        border: none;
-        border-radius: 8px;
-        background: #2a2a2a;
-        color: white;
-        font-size: 16px;
-        outline: none;
-      }
-
-      #search::placeholder { color: #555; }
-
-      #guest-list { padding: 6px 0; }
-
-      .guest {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 11px 16px;
-        background: white;
-        border-bottom: 1px solid #e8e8e8;
-        min-height: 62px;
-      }
-
-      .guest.partial { background: #fff8e1; }
-      .guest.full    { background: #e8f5e9; }
-      .guest.hidden  { display: none; }
-
-      .info {
-        flex: 1;
-        min-width: 0;
-        padding-right: 12px;
-      }
-
-      .name {
-        font-size: 16px;
-        font-weight: 600;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .meta {
-        font-size: 12px;
-        color: #777;
-        margin-top: 2px;
-      }
-
-      .ticket-count {
-        font-weight: 700;
-        margin-left: 3px;
-      }
-
-      .notes {
-        font-size: 11px;
-        color: #aaa;
-        margin-top: 2px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .actions {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-shrink: 0;
-      }
-
-      button {
-        cursor: pointer;
-        border: none;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 700;
-        min-height: 42px;
-        -webkit-tap-highlight-color: transparent;
-        touch-action: manipulation;
-      }
-
-      .btn-in {
-        background: #ff2845;
-        color: white;
-        padding: 0 16px;
-      }
-
-      .btn-in:active { background: #cc1f37; }
-
-      .btn-in.small {
-        font-size: 20px;
-        padding: 0 13px;
-      }
-
-      .btn-undo {
-        background: #e0e0e0;
-        color: #444;
-        font-size: 20px;
-        padding: 0 13px;
-      }
-
-      .btn-undo:active { background: #ccc; }
-
-      button:disabled { opacity: 0.4; }
-
-      .badge {
-        font-size: 13px;
-        font-weight: 700;
-        padding: 4px 9px;
-        border-radius: 5px;
-        white-space: nowrap;
-      }
-
-      .badge.partial { background: #ffca28; color: #333; }
-      .badge.full    { background: #43a047; color: white; }
-
-      #no-results {
-        display: none;
-        text-align: center;
-        padding: 48px 16px;
-        color: #999;
-        font-size: 15px;
-      }
-    </style>
   </head>
   <body>
     <div id="header">
       <div class="header-top">
-        <span class="brand">BLOW</span>
+        <img src="/wordmark.svg" class="logo" alt="Blow" />
         <span id="stats">
-          <span id="stats-in">{checkedInTickets}</span> / {totalTickets} tickets in
+          <span id="stats-in">{checkedInGuests}</span> / {totalGuests} guests in
         </span>
       </div>
-      <input
-        type="search"
-        id="search"
-        placeholder="Search guests…"
-        autocomplete="off"
-        autocorrect="off"
-        spellcheck="false"
-      />
+      <div class="search-row">
+        <input
+          type="search"
+          id="search"
+          placeholder="Search guests…"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+        />
+        <button id="add-toggle">+ Add</button>
+      </div>
+      <div id="add-form" class="add-form hidden">
+        <input
+          type="text"
+          id="add-name"
+          placeholder="Guest name"
+          autocomplete="off"
+          autocorrect="off"
+        />
+        <button id="add-submit">Add</button>
+        <button id="add-cancel" class="btn-cancel">Cancel</button>
+      </div>
     </div>
 
     <div id="guest-list">
@@ -238,10 +86,12 @@ function rowClass(checked: number, total: number) {
           >
             <div class="info">
               <div class="name">{g.name}</div>
-              <div class="meta">
-                {g.ticket_type}{total > 1 && <span class="ticket-count">×{total}</span>}
-              </div>
-              {g.notes && <div class="notes">{g.notes}</div>}
+              {(total > 1 || g.notes) && (
+                <div class="meta">
+                  {total > 1 && <span class="party-size">Party of {total}</span>}
+                  {g.notes && <span class="notes">{g.notes}</span>}
+                </div>
+              )}
             </div>
             <div class="actions" id={`actions-${id}`}>
               {checked === 0 && (
@@ -267,25 +117,95 @@ function rowClass(checked: number, total: number) {
       <div id="no-results">No guests found</div>
     </div>
 
-    <script define:vars={{ initCheckedIn: checkedInTickets }}>
-      let totalIn = initCheckedIn;
+    <script define:vars={{ initCheckedIn: checkedInGuests, totalGuests, currentEvent: event }}>
+      let guestsIn = initCheckedIn;
       const statsEl = document.getElementById('stats-in');
 
       // Search
       const searchEl = document.getElementById('search');
-      const rows = document.querySelectorAll('.guest');
       const noResults = document.getElementById('no-results');
+
+      function getRows() {
+        return document.querySelectorAll('.guest');
+      }
 
       searchEl.addEventListener('input', () => {
         const q = searchEl.value.toLowerCase().trim();
         let visible = 0;
-        rows.forEach(row => {
+        getRows().forEach(row => {
           const match = !q || (row.dataset.name || '').includes(q);
           row.classList.toggle('hidden', !match);
           if (match) visible++;
         });
         noResults.style.display = visible === 0 ? 'block' : 'none';
       });
+
+      // Add guest form toggle
+      const addToggle = document.getElementById('add-toggle');
+      const addForm = document.getElementById('add-form');
+      const addName = document.getElementById('add-name');
+      const addSubmit = document.getElementById('add-submit');
+      const addCancel = document.getElementById('add-cancel');
+
+      addToggle.addEventListener('click', () => {
+        addForm.classList.toggle('hidden');
+        if (!addForm.classList.contains('hidden')) addName.focus();
+      });
+
+      addCancel.addEventListener('click', () => {
+        addForm.classList.add('hidden');
+        addName.value = '';
+      });
+
+      addSubmit.addEventListener('click', () => submitAddGuest());
+      addName.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitAddGuest(); });
+
+      async function submitAddGuest() {
+        const name = addName.value.trim();
+        if (!name) { addName.focus(); return; }
+
+        addSubmit.disabled = true;
+        addSubmit.textContent = '…';
+
+        try {
+          const res = await fetch('/api/add-guest', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ event: currentEvent, name }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+
+          const g = data.guest;
+          const div = document.createElement('div');
+          div.className = 'guest new-guest';
+          div.id = `g-${g.id}`;
+          div.dataset.id = g.id;
+          div.dataset.checked = '0';
+          div.dataset.tickets = '1';
+          div.dataset.name = g.name.toLowerCase();
+          div.innerHTML =
+            `<div class="info"><div class="name">${esc(g.name)}</div></div>` +
+            `<div class="actions" id="actions-${g.id}">` +
+            `<button class="btn-in" data-action="in" data-id="${g.id}">Check In</button>` +
+            `</div>`;
+
+          const list = document.getElementById('guest-list');
+          list.insertBefore(div, list.firstChild);
+
+          addName.value = '';
+          addForm.classList.add('hidden');
+        } catch (err) {
+          alert('Could not add guest: ' + err.message);
+        } finally {
+          addSubmit.disabled = false;
+          addSubmit.textContent = 'Add';
+        }
+      }
+
+      function esc(str) {
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      }
 
       // Check-in via event delegation
       document.getElementById('guest-list').addEventListener('click', async (e) => {
@@ -297,18 +217,23 @@ function rowClass(checked: number, total: number) {
         const row = document.getElementById(`g-${id}`);
         if (!row) return;
 
-        // Disable during request
         row.querySelectorAll('button').forEach(b => (b.disabled = true));
 
-        let checked = parseInt(row.dataset.checked, 10);
+        const checked = parseInt(row.dataset.checked, 10);
         const tickets = parseInt(row.dataset.tickets, 10);
 
-        // Optimistic update
         const newChecked = action === 'in'
           ? Math.min(checked + 1, tickets)
           : Math.max(checked - 1, 0);
+
+        // Track guests in (not individual ticket count)
+        const wasIn = checked > 0;
+        const willBeIn = newChecked > 0;
+
         applyRow(row, id, newChecked, tickets);
-        statsEl.textContent = action === 'in' ? totalIn + 1 : Math.max(totalIn - 1, 0);
+
+        if (!wasIn && willBeIn) statsEl.textContent = guestsIn + 1;
+        else if (wasIn && !willBeIn) statsEl.textContent = Math.max(guestsIn - 1, 0);
 
         try {
           const res = await fetch('/api/checkin', {
@@ -317,12 +242,12 @@ function rowClass(checked: number, total: number) {
             body: JSON.stringify({ id, action }),
           });
           if (!res.ok) throw new Error('failed');
-          totalIn = action === 'in' ? totalIn + 1 : Math.max(totalIn - 1, 0);
-          statsEl.textContent = totalIn;
+          if (!wasIn && willBeIn) guestsIn++;
+          else if (wasIn && !willBeIn) guestsIn = Math.max(guestsIn - 1, 0);
+          statsEl.textContent = guestsIn;
         } catch {
-          // Revert on error
           applyRow(row, id, checked, tickets);
-          statsEl.textContent = totalIn;
+          statsEl.textContent = guestsIn;
         }
       });
 
@@ -351,3 +276,242 @@ function rowClass(checked: number, total: number) {
     </script>
   </body>
 </html>
+
+<style is:global>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f0f0f0;
+    color: #111;
+  }
+
+  #header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #111;
+    padding: 12px 16px 10px;
+  }
+
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .logo {
+    height: 26px;
+    width: auto;
+  }
+
+  #stats {
+    font-size: 13px;
+    color: #888;
+  }
+
+  #stats-in {
+    color: white;
+    font-weight: 700;
+  }
+
+  .search-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  #search {
+    flex: 1;
+    padding: 9px 12px;
+    border: none;
+    border-radius: 8px;
+    background: #2a2a2a;
+    color: white;
+    font-size: 16px;
+    outline: none;
+  }
+
+  #search::placeholder { color: #555; }
+
+  #add-toggle {
+    padding: 0 14px;
+    background: #2a2a2a;
+    color: #aaa;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: 40px;
+  }
+
+  #add-toggle:active { background: #3a3a3a; }
+
+  .add-form {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .add-form.hidden { display: none; }
+
+  #add-name {
+    flex: 1;
+    padding: 9px 12px;
+    border: none;
+    border-radius: 8px;
+    background: #2a2a2a;
+    color: white;
+    font-size: 16px;
+    outline: none;
+  }
+
+  #add-name::placeholder { color: #555; }
+
+  #add-submit {
+    padding: 0 16px;
+    background: #ff2845;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    min-height: 40px;
+  }
+
+  #add-submit:active { background: #cc1f37; }
+
+  .btn-cancel {
+    padding: 0 14px;
+    background: #2a2a2a;
+    color: #aaa;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    min-height: 40px;
+  }
+
+  #guest-list { padding: 6px 0; }
+
+  .guest {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 16px;
+    background: white;
+    border-bottom: 1px solid #e8e8e8;
+    min-height: 62px;
+  }
+
+  .guest.partial { background: #fff8e1; }
+  .guest.full    { background: #e8f5e9; }
+  .guest.hidden  { display: none; }
+
+  .guest.new-guest {
+    border-left: 3px solid #ff2845;
+  }
+
+  .info {
+    flex: 1;
+    min-width: 0;
+    padding-right: 12px;
+  }
+
+  .name {
+    font-size: 16px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 3px;
+    align-items: baseline;
+  }
+
+  .party-size {
+    font-size: 12px;
+    font-weight: 700;
+    background: #e8e8e8;
+    color: #444;
+    padding: 1px 7px;
+    border-radius: 10px;
+  }
+
+  .notes {
+    font-size: 11px;
+    color: #aaa;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  button {
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    min-height: 42px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .btn-in {
+    background: #ff2845;
+    color: white;
+    padding: 0 16px;
+  }
+
+  .btn-in:active { background: #cc1f37; }
+
+  .btn-in.small {
+    font-size: 20px;
+    padding: 0 13px;
+  }
+
+  .btn-undo {
+    background: #e0e0e0;
+    color: #444;
+    font-size: 20px;
+    padding: 0 13px;
+  }
+
+  .btn-undo:active { background: #ccc; }
+
+  button:disabled { opacity: 0.4; }
+
+  .badge {
+    font-size: 13px;
+    font-weight: 700;
+    padding: 4px 9px;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+
+  .badge.partial { background: #ffca28; color: #333; }
+  .badge.full    { background: #43a047; color: white; }
+
+  #no-results {
+    display: none;
+    text-align: center;
+    padding: 48px 16px;
+    color: #999;
+    font-size: 15px;
+  }
+</style>
