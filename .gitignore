@@ -16,6 +16,10 @@ pnpm-debug.log*
 # environment variables
 .env
 .env.production
+.env.local
+
+# private event files (guest lists, financials, door assets)
+private/
 
 # macOS-specific files
 .DS_Store
