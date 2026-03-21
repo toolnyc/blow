@@ -1,5 +1,6 @@
 ---
 import { createClient } from '@supabase/supabase-js';
+import QRCode from 'qrcode';
 
 export const prerender = false;
 
@@ -23,6 +24,12 @@ if (error || !guests) {
 
 const totalPeople = guests.reduce((s, g) => s + (g.tickets as number), 0);
 const checkedInPeople = guests.reduce((s, g) => s + (g.checked_in_count as number), 0);
+
+const qrSvg = await QRCode.toString('https://buy.stripe.com/aFadRb9gbfUW0vafoFb3q02', {
+  type: 'svg',
+  margin: 1,
+  color: { dark: '#000000', light: '#ffffff' },
+});
 
 function rowClass(checked: number, total: number) {
   if (checked === 0) return '';
@@ -121,7 +128,7 @@ function rowClass(checked: number, total: number) {
     </div>
 
     <div id="qr-modal" class="qr-modal hidden">
-      <img src="/door-qr-march21.png" class="qr-img" alt="Door QR" draggable="false" />
+      <div class="qr-card" set:html={qrSvg} />
     </div>
 
     <div id="pin-modal" class="pin-modal hidden">
@@ -159,18 +166,14 @@ function rowClass(checked: number, total: number) {
         noResults.style.display = visible === 0 ? 'block' : 'none';
       });
 
-      // QR fullscreen — preload so it's instant on first tap
+      // QR fullscreen
       const qrModal = document.getElementById('qr-modal');
-      const qrImg = qrModal.querySelector('img');
-      new Image().src = qrImg.src; // warm the cache
-
       document.getElementById('qr-toggle').addEventListener('click', (e) => {
         e.stopPropagation();
         qrModal.classList.remove('hidden');
       });
       qrModal.addEventListener('click', () => qrModal.classList.add('hidden'));
-      qrImg.addEventListener('contextmenu', (e) => e.preventDefault());
-      qrImg.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+      qrModal.querySelector('.qr-card').addEventListener('click', (e) => e.stopPropagation());
 
       // PIN modal — generic, calls pinCallback on success
       const PIN = '0803';
@@ -437,7 +440,7 @@ function rowClass(checked: number, total: number) {
   .qr-modal {
     position: fixed;
     inset: 0;
-    background: black;
+    background: rgba(0, 0, 0, 0.75);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -447,10 +450,21 @@ function rowClass(checked: number, total: number) {
 
   .qr-modal.hidden { display: none; }
 
-  .qr-img {
-    width: min(90vw, 90vh);
-    height: min(90vw, 90vh);
-    object-fit: contain;
+  .qr-card {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    width: min(80vw, 80vh);
+    height: min(80vw, 80vh);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+  }
+
+  .qr-card svg {
+    width: 100%;
+    height: 100%;
   }
 
   #add-toggle {
