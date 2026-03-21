@@ -86,8 +86,9 @@ function rowClass(checked: number, total: number) {
           >
             <div class="info">
               <div class="name">{g.name}</div>
-              {(total > 1 || g.notes) && (
+              {(total > 1 || g.notes || g.ticket_type === 'Walk-in') && (
                 <div class="meta">
+                  {g.ticket_type === 'Walk-in' && <span class="pill walkin">Walk-in</span>}
                   {total > 1 && <span class="party-size">Party of {total}</span>}
                   {g.notes && <span class="notes">{g.notes}</span>}
                 </div>
@@ -111,10 +112,23 @@ function rowClass(checked: number, total: number) {
                 </>
               )}
             </div>
+            <button class="btn-delete" data-action="delete" data-id={id} data-name={g.name as string}>×</button>
           </div>
         );
       })}
       <div id="no-results">No guests found</div>
+    </div>
+
+    <div id="pin-modal" class="pin-modal hidden">
+      <div class="pin-card">
+        <div class="pin-title">Enter PIN to add guest</div>
+        <input type="password" id="pin-input" inputmode="numeric" maxlength="4" placeholder="••••" />
+        <div class="pin-error hidden" id="pin-error">Incorrect PIN</div>
+        <div class="pin-buttons">
+          <button id="pin-cancel" class="btn-cancel">Cancel</button>
+          <button id="pin-submit">OK</button>
+        </div>
+      </div>
     </div>
 
     <script define:vars={{ initCheckedIn: checkedInPeople, totalPeople, currentEvent: event }}>
@@ -140,6 +154,34 @@ function rowClass(checked: number, total: number) {
         noResults.style.display = visible === 0 ? 'block' : 'none';
       });
 
+      // PIN modal
+      const PIN = '0803';
+      const pinModal = document.getElementById('pin-modal');
+      const pinInput = document.getElementById('pin-input');
+      const pinError = document.getElementById('pin-error');
+      const pinSubmit = document.getElementById('pin-submit');
+      const pinCancel = document.getElementById('pin-cancel');
+
+      function checkPin() {
+        if (pinInput.value === PIN) {
+          pinModal.classList.add('hidden');
+          addForm.classList.remove('hidden');
+          addName.focus();
+        } else {
+          pinError.classList.remove('hidden');
+          pinInput.value = '';
+          pinInput.focus();
+        }
+      }
+
+      pinSubmit.addEventListener('click', checkPin);
+      pinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkPin(); });
+      pinCancel.addEventListener('click', () => {
+        pinModal.classList.add('hidden');
+        pinInput.value = '';
+        pinError.classList.add('hidden');
+      });
+
       // Add guest form toggle
       const addToggle = document.getElementById('add-toggle');
       const addForm = document.getElementById('add-form');
@@ -148,8 +190,10 @@ function rowClass(checked: number, total: number) {
       const addCancel = document.getElementById('add-cancel');
 
       addToggle.addEventListener('click', () => {
-        addForm.classList.toggle('hidden');
-        if (!addForm.classList.contains('hidden')) addName.focus();
+        pinInput.value = '';
+        pinError.classList.add('hidden');
+        pinModal.classList.remove('hidden');
+        pinInput.focus();
       });
 
       addCancel.addEventListener('click', () => {
@@ -185,10 +229,12 @@ function rowClass(checked: number, total: number) {
           div.dataset.tickets = '1';
           div.dataset.name = g.name.toLowerCase();
           div.innerHTML =
-            `<div class="info"><div class="name">${esc(g.name)}</div></div>` +
+            `<div class="info"><div class="name">${esc(g.name)}</div>` +
+            `<div class="meta"><span class="pill walkin">Walk-in</span></div></div>` +
             `<div class="actions" id="actions-${g.id}">` +
             `<button class="btn-in" data-action="in" data-id="${g.id}">Check In</button>` +
-            `</div>`;
+            `</div>` +
+            `<button class="btn-delete" data-action="delete" data-id="${g.id}" data-name="${esc(g.name)}">×</button>`;
 
           const list = document.getElementById('guest-list');
           list.insertBefore(div, list.firstChild);
@@ -207,13 +253,36 @@ function rowClass(checked: number, total: number) {
         return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
       }
 
-      // Check-in via event delegation
+      // Check-in + delete via event delegation
       document.getElementById('guest-list').addEventListener('click', async (e) => {
         const btn = e.target.closest('[data-action]');
         if (!btn) return;
 
         const action = btn.dataset.action;
         const id = btn.dataset.id;
+
+        if (action === 'delete') {
+          const name = btn.dataset.name || 'this guest';
+          if (!confirm(`Remove ${name} from the list?`)) return;
+          const row = document.getElementById(`g-${id}`);
+          const checkedCount = row ? parseInt(row.dataset.checked, 10) : 0;
+          btn.disabled = true;
+          try {
+            const res = await fetch('/api/delete-guest', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id }),
+            });
+            if (!res.ok) throw new Error('failed');
+            if (row) row.remove();
+            peopleIn = Math.max(peopleIn - checkedCount, 0);
+            statsEl.textContent = peopleIn;
+          } catch {
+            btn.disabled = false;
+            alert('Could not remove guest');
+          }
+          return;
+        }
         const row = document.getElementById(`g-${id}`);
         if (!row) return;
 
@@ -430,6 +499,18 @@ function rowClass(checked: number, total: number) {
     align-items: baseline;
   }
 
+  .pill {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 10px;
+  }
+
+  .pill.walkin {
+    background: #e8f0fe;
+    color: #1a56db;
+  }
+
   .party-size {
     font-size: 12px;
     font-weight: 700;
@@ -499,6 +580,99 @@ function rowClass(checked: number, total: number) {
 
   .badge.partial { background: #ffca28; color: #333; }
   .badge.full    { background: #43a047; color: white; }
+
+  .btn-delete {
+    background: none;
+    color: #ccc;
+    font-size: 18px;
+    font-weight: 400;
+    padding: 0 6px 0 10px;
+    min-height: 42px;
+    flex-shrink: 0;
+  }
+
+  .btn-delete:active { color: #ff2845; }
+
+  .pin-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+
+  .pin-modal.hidden { display: none; }
+
+  .pin-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px 20px 20px;
+    width: 260px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .pin-title {
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  #pin-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 20px;
+    text-align: center;
+    letter-spacing: 0.3em;
+    outline: none;
+  }
+
+  #pin-input:focus { border-color: #ff2845; }
+
+  .pin-error {
+    font-size: 13px;
+    color: #ff2845;
+    text-align: center;
+    margin-top: -4px;
+  }
+
+  .pin-error.hidden { display: none; }
+
+  .pin-buttons {
+    display: flex;
+    gap: 8px;
+  }
+
+  .pin-buttons .btn-cancel {
+    flex: 1;
+    background: #f0f0f0;
+    color: #444;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    min-height: 42px;
+    cursor: pointer;
+  }
+
+  #pin-submit {
+    flex: 1;
+    background: #ff2845;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    min-height: 42px;
+    cursor: pointer;
+  }
+
+  #pin-submit:active { background: #cc1f37; }
 
   #no-results {
     display: none;
