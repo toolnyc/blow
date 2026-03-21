@@ -55,6 +55,7 @@ function rowClass(checked: number, total: number) {
           autocorrect="off"
           spellcheck="false"
         />
+        <button id="qr-toggle">QR</button>
         <button id="add-toggle">+ Add</button>
       </div>
       <div id="add-form" class="add-form hidden">
@@ -119,6 +120,10 @@ function rowClass(checked: number, total: number) {
       <div id="no-results">No guests found</div>
     </div>
 
+    <div id="qr-modal" class="qr-modal hidden">
+      <img src="/door-qr-march21.png" class="qr-img" alt="Door QR" />
+    </div>
+
     <div id="pin-modal" class="pin-modal hidden">
       <div class="pin-card">
         <div class="pin-title">Enter PIN to add guest</div>
@@ -153,6 +158,11 @@ function rowClass(checked: number, total: number) {
         });
         noResults.style.display = visible === 0 ? 'block' : 'none';
       });
+
+      // QR fullscreen
+      const qrModal = document.getElementById('qr-modal');
+      document.getElementById('qr-toggle').addEventListener('click', () => qrModal.classList.remove('hidden'));
+      qrModal.addEventListener('click', () => qrModal.classList.add('hidden'));
 
       // PIN modal — generic, calls pinCallback on success
       const PIN = '0803';
@@ -400,6 +410,40 @@ function rowClass(checked: number, total: number) {
   }
 
   #search::placeholder { color: #555; }
+
+  #qr-toggle {
+    padding: 0 14px;
+    background: #2a2a2a;
+    color: #aaa;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: 40px;
+  }
+
+  #qr-toggle:active { background: #3a3a3a; }
+
+  .qr-modal {
+    position: fixed;
+    inset: 0;
+    background: black;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    cursor: pointer;
+  }
+
+  .qr-modal.hidden { display: none; }
+
+  .qr-img {
+    width: min(90vw, 90vh);
+    height: min(90vw, 90vh);
+    object-fit: contain;
+  }
 
   #add-toggle {
     padding: 0 14px;
