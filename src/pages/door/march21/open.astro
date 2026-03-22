@@ -1,0 +1,132 @@
+---
+export const prerender = false;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Blow — Open Door</title>
+  </head>
+  <body>
+    <div class="container">
+      <img src="/wordmark.svg" class="logo" alt="Blow" />
+
+      <a
+        id="link1"
+        class="door-btn hidden"
+        href="https://access.alta.avigilon.com/cloudKeyUnlock?shortCode=1ccq87eflq3xj"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Open Door
+      </a>
+
+      <a
+        id="link2"
+        class="door-btn hidden"
+        href="https://access.alta.avigilon.com/cloudKeyUnlock?shortCode=1wq3ob718s5le"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Open Door
+      </a>
+
+      <div id="unavailable" class="gap-msg hidden">
+        Door link not yet available
+      </div>
+    </div>
+
+    <script>
+      function update() {
+        const now = new Date();
+        const ny = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+        const date = ny.getDate();
+        const hour = ny.getHours();
+
+        const link1 = document.getElementById('link1');
+        const link2 = document.getElementById('link2');
+        const unavailable = document.getElementById('unavailable');
+
+        // Link 1: 11 PM March 22 (hour 23) through 2:59 AM March 23 (hour < 3)
+        // Link 2: 3 AM March 23 onward
+        const isLink1 = (date === 22 && hour >= 23) || (date === 23 && hour < 3);
+        const isLink2 = date === 23 && hour >= 3;
+
+        link1.classList.toggle('hidden', !isLink1);
+        link2.classList.toggle('hidden', !isLink2);
+        unavailable.classList.toggle('hidden', isLink1 || isLink2);
+      }
+
+      update();
+      setInterval(update, 60000);
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #111;
+    color: white;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding: 32px 24px;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .logo {
+    height: 30px;
+    width: auto;
+    margin-bottom: 16px;
+  }
+
+  .door-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 24px 20px;
+    background: #ff2845;
+    color: white;
+    border-radius: 16px;
+    font-size: 22px;
+    font-weight: 700;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: background 0.15s;
+  }
+
+  .door-btn:active { background: #cc1f37; }
+
+  .door-btn .sub {
+    font-size: 13px;
+    font-weight: 400;
+    opacity: 0.8;
+    margin-top: 4px;
+  }
+
+  .gap-msg {
+    font-size: 15px;
+    color: #666;
+    text-align: center;
+    padding: 24px;
+  }
+
+  .hidden { display: none; }
+</style>
