@@ -51,8 +51,9 @@ export const prerender = false;
 
         // Link 1: 11 PM March 22 (hour 23) through 2:59 AM March 23 (hour < 3)
         // Link 2: 3 AM March 23 onward
-        const isLink1 = (date === 22 && hour >= 23) || (date === 23 && hour < 3) || (date === 22 && hour < 23);
-        const isLink2 = date === 23 && hour >= 3;
+        // TODO: restore time gates after testing
+        const isLink1 = true;
+        const isLink2 = false;
 
         link1.classList.toggle('hidden', !isLink1);
         link2.classList.toggle('hidden', !isLink2);
