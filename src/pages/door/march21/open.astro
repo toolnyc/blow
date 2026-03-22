@@ -20,7 +20,7 @@ export const prerender = false;
         target="_blank"
         rel="noopener noreferrer"
       >
-        Open Door
+        Open Sesame
       </a>
 
       <a
@@ -30,7 +30,7 @@ export const prerender = false;
         target="_blank"
         rel="noopener noreferrer"
       >
-        Open Door
+        Open Sesame
       </a>
 
       <div id="unavailable" class="gap-msg hidden">
@@ -51,17 +51,17 @@ export const prerender = false;
 
         // Link 1: 11 PM March 22 (hour 23) through 2:59 AM March 23 (hour < 3)
         // Link 2: 3 AM March 23 onward
-        // TODO: restore time gates after testing
-        const isLink1 = true;
-        const isLink2 = false;
+        // Link 1 active now, swaps to link 2 at exactly 3 AM ET March 23
+        const swap = new Date('2026-03-23T03:00:00-04:00');
+        const isLink2 = now >= swap;
 
-        link1.classList.toggle('hidden', !isLink1);
+        link1.classList.toggle('hidden', isLink2);
         link2.classList.toggle('hidden', !isLink2);
-        unavailable.classList.toggle('hidden', isLink1 || isLink2);
+        unavailable.classList.add('hidden');
       }
 
       update();
-      setInterval(update, 60000);
+      setInterval(update, 10000);
     </script>
   </body>
 </html>
