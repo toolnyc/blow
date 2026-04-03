@@ -6,7 +6,11 @@
  * Gate 3: Warn on git commit/PR without verify-passed sentinel
  */
 
-import { check } from './sentinels.mjs';
+import { dirname, join } from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const { check } = await import(pathToFileURL(join(__dirname, 'sentinels.mjs')).href);
 
 const toolName  = process.env.CLAUDE_TOOL_NAME  || '';
 const toolInput = process.env.CLAUDE_TOOL_INPUT || '{}';

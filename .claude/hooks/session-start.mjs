@@ -4,8 +4,12 @@
  * Handles: resume detection, compact warning, dirty exit recovery.
  */
 
-import { check, set } from './sentinels.mjs';
+import { dirname, join } from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { execSync } from 'child_process';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const { check, set } = await import(pathToFileURL(join(__dirname, 'sentinels.mjs')).href);
 
 const event = process.env.CLAUDE_SESSION_EVENT || 'startup';
 

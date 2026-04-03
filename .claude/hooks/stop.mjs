@@ -2,8 +2,12 @@
  * Stop hook — reminds to run /session-close if there's uncommitted work.
  */
 
-import { check } from './sentinels.mjs';
+import { dirname, join } from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { execSync } from 'child_process';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const { check } = await import(pathToFileURL(join(__dirname, 'sentinels.mjs')).href);
 
 const messages = [];
 
