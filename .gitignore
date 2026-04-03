@@ -21,6 +21,10 @@ pnpm-debug.log*
 # private event files (guest lists, financials, door assets)
 private/
 
+# agentic state (ephemeral sentinel files)
+.claude/state/
+.claude/epics/.active
+
 # macOS-specific files
 .DS_Store
 
@@ -29,3 +33,5 @@ private/
 
 # vercel build output
 .vercel/
+.vercel
+.env*.local

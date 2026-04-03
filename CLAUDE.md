@@ -1,22 +1,12 @@
 # CLAUDE.md
 
-This project is for Blow, a DIY-party series in New York. The goal of the site is:
-- Capture emails for marketing
-- Display the blow brand
+> Entry point for Claude Code. See **AGENTS.md** for full project instructions.
+> This file is the thin wrapper; AGENTS.md is the primary source of truth.
 
-## Stack and Tools
-- Vercel for deployment and media storage
-- Supabase for database
-- Resend for email client
+## Quick Reference
 
-## Build Commands
-
-- `pnpm dev` - Start development server at localhost:4321
-- `pnpm build` - Build production site to `./dist/`
-- `pnpm preview` - Preview production build locally
-
-## Architecture
-
-This is an Astro static site. Pages live in `src/pages/` and are file-based routed (e.g., `index.astro` → `/`). Static assets are in `public/`.
-
-TypeScript is configured with Astro's strict preset.
+- **Project:** Blow — DIY party series in New York
+- **Stack:** Astro 5 + Supabase + Resend + Vercel
+- **Dev:** `pnpm dev` (localhost:4321)
+- **Build:** `pnpm build`
+- **Instructions:** Read `AGENTS.md` for architecture, conventions, skills, and hooks
