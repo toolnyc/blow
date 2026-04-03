@@ -23,6 +23,20 @@ export const POST: APIRoute = async ({ request }) => {
     import.meta.env.SUPABASE_ANON_KEY
   );
 
+  const WALKIN_LIMIT = 30;
+  const { count } = await supabase
+    .from('guests')
+    .select('*', { count: 'exact', head: true })
+    .eq('event', event)
+    .eq('ticket_type', 'Walk-in');
+
+  if (count !== null && count >= WALKIN_LIMIT) {
+    return new Response(JSON.stringify({ error: 'Walk-in limit reached' }), {
+      status: 409,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   const { data: guest, error } = await supabase
     .from('guests')
     .insert({

@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { execSync } from 'child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const { check } = await import(pathToFileURL(join(__dirname, 'sentinels.mjs')).href);
+const { check, clear } = await import(pathToFileURL(join(__dirname, 'sentinels.mjs')).href);
 
 const messages = [];
 
@@ -34,6 +34,10 @@ if (dirtyCount >= 3 || recentCommits > 0 || sessionAge > 1) {
   if (recentCommits > 0) messages.push(`  - Capture learnings from ${recentCommits} commit(s)`);
   messages.push('  - Clear sentinel state');
 }
+
+// Normal exit — clear sentinel so next startup doesn't false-alarm.
+// A crash/force-quit skips this hook, leaving the sentinel for real dirty-exit detection.
+clear('session-active');
 
 if (messages.length > 0) {
   console.log(JSON.stringify({ stopReason: messages.join('\n') }));

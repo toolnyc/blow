@@ -7,6 +7,12 @@ export const prerender = false;
 const { event } = Astro.params;
 if (!event) return Astro.redirect('/');
 
+const EVENT_CONFIG: Record<string, { walkinLimit: number; stripeUrl: string }> = {
+  'march21': { walkinLimit: 20, stripeUrl: 'https://buy.stripe.com/aFadRb9gbfUW0vafoFb3q02' },
+  'may5':    { walkinLimit: 30, stripeUrl: '' },
+};
+const config = EVENT_CONFIG[event] ?? { walkinLimit: 30, stripeUrl: '' };
+
 const supabase = createClient(
   import.meta.env.SUPABASE_URL,
   import.meta.env.SUPABASE_ANON_KEY
@@ -24,10 +30,10 @@ if (error || !guests) {
 
 const totalPeople = guests.reduce((s, g) => s + (g.tickets as number), 0);
 const checkedInPeople = guests.reduce((s, g) => s + (g.checked_in_count as number), 0);
-const WALKIN_LIMIT = 20;
+const WALKIN_LIMIT = config.walkinLimit;
 const walkInCount = guests.filter((g) => g.ticket_type === 'Walk-in').length;
 
-const qrSvg = await QRCode.toString('https://buy.stripe.com/aFadRb9gbfUW0vafoFb3q02', {
+const qrSvg = await QRCode.toString(config.stripeUrl || 'https://blow.nyc', {
   type: 'svg',
   margin: 1,
   color: { dark: '#000000', light: '#ffffff' },
