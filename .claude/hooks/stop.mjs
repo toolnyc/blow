@@ -36,7 +36,7 @@ if (dirtyCount >= 3 || recentCommits > 0 || sessionAge > 1) {
 }
 
 if (messages.length > 0) {
-  console.log(JSON.stringify({ hookSpecificOutput: messages.join('\n') }));
+  console.log(JSON.stringify({ stopReason: messages.join('\n') }));
 }
 
 process.exit(0);
