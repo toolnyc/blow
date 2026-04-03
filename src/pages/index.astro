@@ -66,6 +66,10 @@ const menuItems = [
       <p>Now Blowing</p>
       <p class="hint">Un petite soirée à NYC</p>
       <p class="hint">May 5, 2026</p>
+      <div class="ticket-buttons">
+        <button class="buy-btn" data-tier="regular">Regular — $20</button>
+        <button class="buy-btn" data-tier="supporter">Supporter — $30</button>
+      </div>
     </div>
   </Window>
 
@@ -134,6 +138,22 @@ const menuItems = [
     color: #808080;
     font-size: 11px;
     margin-top: 8px;
+  }
+
+  .ticket-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 16px;
+  }
+
+  .buy-btn {
+    min-width: 120px;
+    font-weight: bold;
+  }
+
+  .buy-btn:disabled {
+    cursor: wait;
   }
 
   .dialog-overlay {
@@ -508,5 +528,41 @@ const menuItems = [
   errorOk?.addEventListener('click', () => {
     errorDialog.style.display = 'none';
     if (statusText) statusText.textContent = 'Ready';
+  });
+
+  // Ticket purchase logic
+  document.querySelectorAll('.buy-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const button = btn as HTMLButtonElement;
+      const tier = button.dataset.tier;
+      if (!tier) return;
+
+      button.disabled = true;
+      button.textContent = 'Loading...';
+
+      try {
+        const response = await fetch('/api/create-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tier }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.url) {
+          window.location.href = data.url;
+        } else {
+          errorMessage.textContent = data.error || 'Could not start checkout.';
+          errorDialog.style.display = 'flex';
+          button.disabled = false;
+          button.textContent = tier === 'regular' ? 'Regular — $20' : 'Supporter — $30';
+        }
+      } catch {
+        errorMessage.textContent = 'Network error. Please try again.';
+        errorDialog.style.display = 'flex';
+        button.disabled = false;
+        button.textContent = tier === 'regular' ? 'Regular — $20' : 'Supporter — $30';
+      }
+    });
   });
 </script>

@@ -1,0 +1,67 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Window from '../components/Window.astro';
+---
+
+<Layout title="BlowNet ™ — You're In">
+  <div class="success-desktop">
+    <Window
+      title="Confirmation"
+      icon="/icons/events.svg"
+      showControls={false}
+      id="success-window"
+      initialX="calc(50vw - 160px)"
+      initialY={120}
+    >
+      <div class="success-content">
+        <img src="/wordmark.svg" alt="Blow" class="wordmark" />
+        <p class="message">You're in.</p>
+        <p class="hint">May 5, 2026</p>
+        <p class="hint">Check your email for details.</p>
+        <a href="/" class="back-link">
+          <button>Back to BlowNet</button>
+        </a>
+      </div>
+    </Window>
+  </div>
+</Layout>
+
+<style>
+  .success-desktop {
+    min-height: 100vh;
+    background: linear-gradient(180deg, #008080 0%, #004040 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .success-content {
+    text-align: center;
+    padding: 20px;
+  }
+
+  .wordmark {
+    max-width: 200px;
+    height: auto;
+    margin-bottom: 16px;
+  }
+
+  .message {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ff2845;
+    margin: 16px 0 8px;
+  }
+
+  .hint {
+    color: #808080;
+    margin: 4px 0;
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-top: 16px;
+    text-decoration: none;
+  }
+</style>
