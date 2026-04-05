@@ -55,22 +55,34 @@ STRIPE_WEBHOOK_SECRET   # Stripe webhook signing secret
 
 ```
 src/
+├── middleware.ts                 # Auth gate — /admin/* routes require session
+├── styles/
+│   └── tokens.css               # CSS custom properties (brand, Win98, spacing)
 ├── pages/
 │   ├── index.astro              # Landing page (Windows 98 desktop)
-│   ├── door/[event].astro       # Door check-in tool
+│   ├── success.astro            # Post-purchase confirmation
+│   ├── door/[event].astro       # Door check-in tool (98.css dark retro)
+│   ├── admin/
+│   │   └── index.astro          # Admin dashboard (gated by middleware)
 │   └── api/
 │       ├── subscribe.ts         # Email subscription
 │       ├── checkin.ts           # Guest check-in (increment/undo)
-│       ├── create-checkout.ts    # Stripe checkout session
+│       ├── create-checkout.ts   # Stripe checkout session
 │       ├── stripe-webhook.ts    # Stripe post-purchase webhook
 │       ├── add-guest.ts         # Walk-in guest entry
-│       └── delete-guest.ts      # Remove guest
+│       ├── delete-guest.ts      # Remove guest
+│       └── auth/
+│           ├── login.ts         # Send magic link via Supabase Auth
+│           ├── callback.ts      # Exchange code for session cookies
+│           └── logout.ts        # Clear session, redirect home
 ├── components/
 │   ├── Window.astro             # Draggable window
 │   ├── BootScreen.astro         # Startup splash
-│   └── Taskbar.astro            # Bottom bar with clock
+│   ├── Taskbar.astro            # Bottom bar with clock
+│   └── BottomNav.astro          # Fixed nav: Subscribe | Mixtapes | Events | Admin
 └── layouts/
-    └── Layout.astro             # Base HTML shell
+    ├── Layout.astro             # Base HTML shell (public site)
+    └── AdminLayout.astro        # Admin shell with bottom tab nav
 
 supabase/
 ├── guests.sql                   # Guests table (door check-in)
