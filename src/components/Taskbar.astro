@@ -53,6 +53,12 @@ const { menuItems = [] } = Astro.props;
     z-index: 1000;
   }
 
+  @media (max-width: 600px) {
+    .taskbar {
+      display: none;
+    }
+  }
+
   .start-button-container {
     position: relative;
   }
