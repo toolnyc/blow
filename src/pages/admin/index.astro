@@ -5,31 +5,37 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 ---
 
 <AdminLayout title="Dashboard — Blow Admin">
-  <h1 class="admin-page-title">Dashboard</h1>
+  <h1 class="page-title">Dashboard</h1>
 
   <div class="dashboard-stats">
-    <div class="admin-card">
-      <div class="admin-card-label">Next Event</div>
-      <div class="admin-card-value">--</div>
+    <div class="widget">
+      <div class="widget-label">Next Event</div>
+      <div class="widget-value">--</div>
     </div>
-    <div class="admin-card">
-      <div class="admin-card-label">Tickets Sold</div>
-      <div class="admin-card-value accent">--</div>
+    <div class="widget">
+      <div class="widget-label">Tickets Sold</div>
+      <div class="widget-value accent">--</div>
     </div>
-    <div class="admin-card">
-      <div class="admin-card-label">Subscribers</div>
-      <div class="admin-card-value">--</div>
+    <div class="widget">
+      <div class="widget-label">Subscribers</div>
+      <div class="widget-value">--</div>
     </div>
-    <div class="admin-card">
-      <div class="admin-card-label">Revenue</div>
-      <div class="admin-card-value">--</div>
+    <div class="widget">
+      <div class="widget-label">Revenue</div>
+      <div class="widget-value">--</div>
     </div>
   </div>
 
   <div class="dashboard-section">
-    <h2 class="dashboard-section-title">Recent Activity</h2>
-    <div class="admin-card">
-      <p class="dashboard-empty">No recent activity to display.</p>
+    <h2 class="section-title">Recent Activity</h2>
+    <div class="card dot-grid">
+      <div class="dashboard-empty state-empty">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <rect x="6" y="10" width="36" height="28" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M6 18h36M18 18v20" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        <p>No recent activity to display.</p>
+      </div>
     </div>
   </div>
 </AdminLayout>
@@ -38,8 +44,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   .dashboard-stats {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-md);
-    margin-bottom: var(--space-xl);
+    gap: var(--sp-4);
+    margin-bottom: var(--sp-8);
   }
 
   @media (min-width: 601px) {
@@ -49,19 +55,11 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   }
 
   .dashboard-section {
-    margin-bottom: var(--space-xl);
-  }
-
-  .dashboard-section-title {
-    font-size: var(--font-size-lg);
-    color: var(--admin-text);
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--sp-8);
   }
 
   .dashboard-empty {
-    color: var(--admin-text-muted);
-    font-size: var(--font-size-base);
-    padding: var(--space-lg) 0;
-    text-align: center;
+    min-height: 200px;
+    padding: var(--sp-12) var(--sp-6);
   }
 </style>
