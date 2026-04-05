@@ -156,6 +156,12 @@ const { menuItems = [] } = Astro.props;
     min-width: 7ch;
     text-align: right;
   }
+
+  @media (max-width: 600px) {
+    .system-tray {
+      display: none;
+    }
+  }
 </style>
 
 <script>

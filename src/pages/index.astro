@@ -238,6 +238,7 @@ const menuItems = [
   .controls-row button {
     min-width: 32px;
     font-size: 12px;
+    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
   }
 
   .volume-slider {
@@ -360,13 +361,13 @@ const menuItems = [
       zIndex: 1,
     });
 
-    // Mobile positioning
+    // Mobile positioning — stack vertically within viewport
     const isMobile = window.innerWidth <= 600;
     if (isMobile) {
       const mobilePositions: Record<string, number> = {
-        'subscribe-window': 20,
-        'mixtapes-window': 220,
-        'events-window': 560,
+        'subscribe-window': 10,
+        'mixtapes-window': 180,
+        'events-window': 420,
       };
       windowEl.style.left = '20px';
       if (mobilePositions[id] !== undefined) {
