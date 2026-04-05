@@ -6,6 +6,21 @@ interface Props {
 }
 
 const { title = 'Blow Admin' } = Astro.props;
+const currentPath = Astro.url.pathname;
+
+const navItems = [
+  { href: '/admin', label: 'Dashboard', icon: 'dashboard' },
+  { href: '/admin/events', label: 'Events', icon: 'events' },
+  { href: '/admin/guests', label: 'Guests', icon: 'guests' },
+  { href: '/admin/settings', label: 'Settings', icon: 'settings' },
+];
+
+function isActive(href: string): boolean {
+  if (href === '/admin') {
+    return currentPath === '/admin' || currentPath === '/admin/';
+  }
+  return currentPath.startsWith(href);
+}
 ---
 
 <!doctype html>
@@ -15,105 +30,280 @@ const { title = 'Blow Admin' } = Astro.props;
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title}</title>
-    <link rel="stylesheet" href="https://unpkg.com/98.css" />
   </head>
-  <body>
-    <div class="admin-desktop">
-      <div class="window admin-window">
-        <div class="title-bar">
-          <div class="title-bar-text">{title}</div>
-          <div class="title-bar-controls">
-            <a href="/" class="logout-link" aria-label="Logout">Logout</a>
-          </div>
-        </div>
-        <div class="window-body admin-body">
-          <slot />
-        </div>
+  <body class="admin-body-root">
+    <!-- Desktop top bar -->
+    <header class="admin-topbar">
+      <div class="admin-topbar-left">
+        <span class="admin-logo">BLOW</span>
+        <span class="admin-logo-sub">ADMIN</span>
       </div>
+      <nav class="admin-topbar-nav">
+        {navItems.map((item) => (
+          <a
+            href={item.href}
+            class:list={['admin-topbar-link', { active: isActive(item.href) }]}
+          >
+            {item.label}
+          </a>
+        ))}
+      </nav>
+      <form method="POST" action="/api/auth/logout" class="admin-topbar-logout">
+        <button type="submit" class="admin-logout-btn">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M10.5 11.5L14 8l-3.5-3.5M14 8H6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>Logout</span>
+        </button>
+      </form>
+    </header>
 
-      <div class="admin-tabs">
-        <div class="admin-tab active">Dashboard</div>
-      </div>
-    </div>
+    <!-- Main content -->
+    <main class="admin-main">
+      <slot />
+    </main>
+
+    <!-- Mobile bottom nav -->
+    <nav class="admin-bottom-nav">
+      {navItems.map((item) => (
+        <a
+          href={item.href}
+          class:list={['admin-bottom-tab', { active: isActive(item.href) }]}
+        >
+          <Fragment set:html={
+            item.icon === 'dashboard'
+              ? '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="2" width="7" height="4" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="8" width="7" height="10" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="2" y="11" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>'
+            : item.icon === 'events'
+              ? '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="1" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14M7 2v4M13 2v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
+            : item.icon === 'guests'
+              ? '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M4 17c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
+              : '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M10 2a1.5 1.5 0 011.5 1.5v.7a5.5 5.5 0 012.3 1.3l.6-.3a1.5 1.5 0 012 .5l.1.2a1.5 1.5 0 01-.6 2l-.6.3a5.5 5.5 0 010 2.6l.6.3a1.5 1.5 0 01.5 2.1l-.1.1a1.5 1.5 0 01-2 .5l-.6-.3a5.5 5.5 0 01-2.3 1.3v.7a1.5 1.5 0 01-3 0v-.7a5.5 5.5 0 01-2.3-1.3l-.6.3a1.5 1.5 0 01-2-.5l-.1-.2a1.5 1.5 0 01.6-2l.6-.3a5.5 5.5 0 010-2.6l-.6-.3a1.5 1.5 0 01-.5-2.1l.1-.1a1.5 1.5 0 012-.5l.6.3A5.5 5.5 0 018.5 4.2v-.7A1.5 1.5 0 0110 2z" stroke="currentColor" stroke-width="1.2"/></svg>'
+          } />
+          <span>{item.label}</span>
+        </a>
+      ))}
+    </nav>
   </body>
 </html>
 
 <style is:global>
-  * { box-sizing: border-box; }
+  /* Reset for admin — no 98.css loaded */
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 
-  body {
+  .admin-body-root {
     margin: 0;
     min-height: 100vh;
-    background: var(--win98-bg, #c0c0c0);
-    font-family: var(--font-system, 'Pixelated MS Sans Serif', Arial, sans-serif);
+    background: var(--admin-bg);
+    color: var(--admin-text);
+    font-family: var(--font-system);
+    font-size: var(--font-size-base);
+    -webkit-font-smoothing: antialiased;
   }
 
-  .admin-desktop {
+  /* Desktop top bar */
+  .admin-topbar {
+    display: none;
+    align-items: center;
+    height: var(--admin-nav-height);
+    padding: 0 var(--space-lg);
+    background: var(--admin-surface);
+    border-bottom: 1px solid var(--admin-border);
+  }
+
+  @media (min-width: 601px) {
+    .admin-topbar {
+      display: flex;
+    }
+  }
+
+  .admin-topbar-left {
     display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    padding-bottom: 36px;
+    align-items: baseline;
+    gap: var(--space-sm);
+    margin-right: var(--space-xl);
   }
 
-  .admin-window {
-    width: 100%;
+  .admin-logo {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--blow-red);
+    letter-spacing: 2px;
+  }
+
+  .admin-logo-sub {
+    font-size: var(--font-size-sm);
+    color: var(--admin-text-muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .admin-topbar-nav {
+    display: flex;
+    gap: var(--space-xs);
     flex: 1;
   }
 
-  .admin-window .title-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .admin-body {
-    padding: var(--space-md, 16px);
-    min-height: calc(100vh - 80px);
-  }
-
-  .logout-link {
-    color: var(--text-light, #ffffff);
+  .admin-topbar-link {
+    padding: var(--space-sm) var(--space-md);
+    color: var(--admin-text-muted);
     text-decoration: none;
-    font-size: var(--font-size-sm, 11px);
-    padding: 0 8px;
-    font-weight: bold;
+    font-size: var(--font-size-base);
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
   }
 
-  .logout-link:hover {
-    text-decoration: underline;
+  .admin-topbar-link:hover {
+    color: var(--admin-text);
+    background: var(--admin-surface-hover);
   }
 
-  .admin-tabs {
+  .admin-topbar-link.active {
+    color: var(--text-light);
+    background: var(--admin-surface-hover);
+    border-bottom: 2px solid var(--blow-red);
+  }
+
+  .admin-topbar-logout {
+    margin-left: auto;
+  }
+
+  .admin-logout-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    background: transparent;
+    border: 1px solid var(--admin-border);
+    color: var(--admin-text-muted);
+    font-family: var(--font-system);
+    font-size: var(--font-size-sm);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .admin-logout-btn:hover {
+    color: var(--blow-red);
+    border-color: var(--blow-red);
+  }
+
+  /* Main content */
+  .admin-main {
+    padding: var(--space-md);
+    min-height: calc(100vh - var(--admin-nav-height));
+    padding-bottom: calc(var(--admin-nav-height) + var(--space-md));
+  }
+
+  @media (min-width: 601px) {
+    .admin-main {
+      padding: var(--space-lg) var(--space-xl);
+      padding-bottom: var(--space-lg);
+    }
+  }
+
+  /* Mobile bottom nav */
+  .admin-bottom-nav {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 36px;
-    background: var(--win98-bg, #c0c0c0);
-    border-top: 2px solid var(--win98-border-light, #ffffff);
+    height: var(--admin-nav-height);
+    background: var(--admin-surface);
+    border-top: 1px solid var(--admin-border);
     display: flex;
     align-items: center;
-    padding: 2px 4px;
-    gap: 2px;
+    justify-content: space-around;
     z-index: 1000;
+    padding-bottom: env(safe-area-inset-bottom, 0);
   }
 
-  .admin-tab {
+  @media (min-width: 601px) {
+    .admin-bottom-nav {
+      display: none;
+    }
+  }
+
+  .admin-bottom-tab {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    padding: 2px 16px;
-    font-size: var(--font-size-sm, 11px);
-    font-family: var(--font-system, 'Pixelated MS Sans Serif', Arial, sans-serif);
-    font-weight: bold;
-    background: var(--win98-bg, #c0c0c0);
-    border: 2px solid;
-    border-color: var(--win98-border-light, #ffffff) var(--win98-border-dark, #808080) var(--win98-border-dark, #808080) var(--win98-border-light, #ffffff);
-    cursor: pointer;
-    min-height: 24px;
+    gap: 2px;
+    padding: var(--space-xs) var(--space-sm);
+    color: var(--admin-text-muted);
+    text-decoration: none;
+    font-size: 10px;
+    font-family: var(--font-system);
+    transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  .admin-tab.active {
-    background: var(--win98-white, #ffffff);
-    border-bottom-color: var(--win98-white, #ffffff);
+  .admin-bottom-tab:hover {
+    color: var(--admin-text);
+  }
+
+  .admin-bottom-tab.active {
+    color: var(--blow-red);
+  }
+
+  .admin-bottom-tab svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Utility classes for admin pages */
+  .admin-page-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--text-light);
+    margin-bottom: var(--space-lg);
+  }
+
+  .admin-card {
+    background: var(--admin-surface);
+    border: 1px solid var(--admin-border);
+    border-radius: 6px;
+    padding: var(--space-lg);
+  }
+
+  .admin-card-label {
+    font-size: var(--font-size-sm);
+    color: var(--admin-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: var(--space-sm);
+  }
+
+  .admin-card-value {
+    font-size: 28px;
+    font-weight: bold;
+    color: var(--text-light);
+    font-family: var(--font-mono);
+  }
+
+  .admin-card-value.accent {
+    color: var(--blow-red);
+  }
+
+  .admin-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    color: var(--admin-text-muted);
+    text-align: center;
+    gap: var(--space-md);
+  }
+
+  .admin-placeholder svg {
+    opacity: 0.3;
+  }
+
+  .admin-placeholder p {
+    font-size: var(--font-size-base);
   }
 </style>
