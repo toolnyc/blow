@@ -2,6 +2,54 @@
 export const prerender = false;
 
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  import.meta.env.SUPABASE_URL,
+  import.meta.env.SUPABASE_ANON_KEY
+);
+
+// Next event (first future event by date)
+const today = new Date().toISOString().slice(0, 10);
+const { data: nextEventRow } = await supabase
+  .from('events')
+  .select('name, date, slug')
+  .gte('date', today)
+  .order('date', { ascending: true })
+  .limit(1)
+  .maybeSingle();
+
+const nextEventLabel = nextEventRow
+  ? new Date(nextEventRow.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  : '—';
+const nextEventSub = nextEventRow ? nextEventRow.name : 'No upcoming events';
+
+// Total tickets sold (sum of guests.tickets across all events)
+const { data: ticketRows } = await supabase
+  .from('guests')
+  .select('tickets');
+const totalTickets = (ticketRows ?? []).reduce((sum, r) => sum + (r.tickets ?? 0), 0);
+
+// Subscriber count
+const { count: subscriberCount } = await supabase
+  .from('subscribers')
+  .select('*', { count: 'exact', head: true });
+
+// Revenue (sum of orders.amount_cents)
+const { data: revenueRows } = await supabase
+  .from('orders')
+  .select('amount_cents');
+const totalRevenueCents = (revenueRows ?? []).reduce((sum, r) => sum + (r.amount_cents ?? 0), 0);
+const revenueDisplay = totalRevenueCents > 0
+  ? `$${(totalRevenueCents / 100).toLocaleString('en-US', { minimumFractionDigits: 0 })}`
+  : '$0';
+
+// Recent activity — last 10 guest check-ins / sign-ups
+const { data: recentGuests } = await supabase
+  .from('guests')
+  .select('name, event, ticket_type, created_at, checked_in_count, first_checked_in_at')
+  .order('created_at', { ascending: false })
+  .limit(10);
 ---
 
 <AdminLayout title="Dashboard — Blow Admin">
@@ -10,33 +58,52 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   <div class="dashboard-stats">
     <div class="widget">
       <div class="widget-label">Next Event</div>
-      <div class="widget-value">--</div>
+      <div class="widget-value">{nextEventLabel}</div>
+      <div class="widget-sub">{nextEventSub}</div>
     </div>
     <div class="widget">
       <div class="widget-label">Tickets Sold</div>
-      <div class="widget-value accent">--</div>
+      <div class="widget-value accent">{totalTickets}</div>
+      <div class="widget-sub">all events</div>
     </div>
     <div class="widget">
       <div class="widget-label">Subscribers</div>
-      <div class="widget-value">--</div>
+      <div class="widget-value">{subscriberCount ?? 0}</div>
     </div>
     <div class="widget">
       <div class="widget-label">Revenue</div>
-      <div class="widget-value">--</div>
+      <div class="widget-value">{revenueDisplay}</div>
+      <div class="widget-sub">lifetime</div>
     </div>
   </div>
 
   <div class="dashboard-section">
     <h2 class="section-title">Recent Activity</h2>
-    <div class="card dot-grid">
-      <div class="dashboard-empty state-empty">
-        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-          <rect x="6" y="10" width="36" height="28" rx="2" stroke="currentColor" stroke-width="1.5"/>
-          <path d="M6 18h36M18 18v20" stroke="currentColor" stroke-width="1.5"/>
-        </svg>
-        <p>No recent activity to display.</p>
+    {(recentGuests && recentGuests.length > 0) ? (
+      <div class="activity-list">
+        {recentGuests.map((g) => {
+          const when = new Date(g.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const action = g.checked_in_count > 0 ? 'checked in' : 'signed up';
+          return (
+            <div class="activity-row">
+              <span class="activity-name">{g.name}</span>
+              <span class="activity-detail">{action} · {g.ticket_type ?? 'ticket'} · {g.event}</span>
+              <span class="activity-time">{when}</span>
+            </div>
+          );
+        })}
       </div>
-    </div>
+    ) : (
+      <div class="card dot-grid">
+        <div class="dashboard-empty state-empty">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <rect x="6" y="10" width="36" height="28" rx="2" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M6 18h36M18 18v20" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          <p>No recent activity to display.</p>
+        </div>
+      </div>
+    )}
   </div>
 </AdminLayout>
 
@@ -61,5 +128,52 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   .dashboard-empty {
     min-height: 200px;
     padding: var(--sp-12) var(--sp-6);
+  }
+
+  .activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .activity-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .activity-row:last-child {
+    border-bottom: none;
+  }
+
+  .activity-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+
+  .activity-detail {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .activity-time {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+    white-space: nowrap;
   }
 </style>

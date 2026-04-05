@@ -1636,7 +1636,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     fieldName.value = ev.name;
     fieldSlug.value = ev.slug;
     fieldSlug.readOnly = true;
-    fieldDate.value = ev.date;
+    fieldDate.value = ev.date.slice(0, 10);
     fieldVenue.value = ev.venue ?? '';
     fieldCapacity.value = ev.capacity !== null ? String(ev.capacity) : '';
     fieldWalkinLimit.value = String(ev.walk_in_limit);
@@ -1789,7 +1789,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       item.setAttribute('role', 'button');
       item.setAttribute('tabindex', '0');
 
-      const dateStr = new Date(ev.date + 'T00:00:00').toLocaleDateString('en-US', {
+      const dateStr = new Date(ev.date.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
