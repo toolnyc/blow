@@ -578,11 +578,16 @@ const menuItems = [
     });
   }
 
-  // Start menu and bottom nav — open windows
+  // Start menu and bottom nav — toggle windows
   document.querySelectorAll('[data-open-window]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = (btn as HTMLElement).dataset.openWindow!;
-      openWindow(id);
+      const state = windows.get(id);
+      if (state && state.isOpen && !state.isMinimized) {
+        closeWindow(id);
+      } else {
+        openWindow(id);
+      }
       document.getElementById('start-menu')?.classList.remove('open');
     });
   });
