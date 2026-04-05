@@ -3,13 +3,12 @@ import Layout from '../layouts/Layout.astro';
 import Window from '../components/Window.astro';
 import BootScreen from '../components/BootScreen.astro';
 import Taskbar from '../components/Taskbar.astro';
-import BottomNav from '../components/BottomNav.astro';
 
 const menuItems = [
   { id: 'subscribe-window', title: 'Subscribe', icon: '/icons/subscribe.svg' },
   { id: 'mixtapes-window', title: 'Mixtapes', icon: '/icons/mixtapes.svg' },
   { id: 'events-window', title: 'Events', icon: '/icons/events.svg' },
-  { id: 'login-window', title: 'Admin', icon: '/icons/events.svg' },
+  { id: 'login-window', title: 'Admin', icon: '/icons/admin.svg' },
 ];
 ---
 
@@ -91,7 +90,7 @@ const menuItems = [
   <!-- Login Window -->
   <Window
     title="Admin Login"
-    icon="/icons/events.svg"
+    icon="/icons/admin.svg"
     draggable
     id="login-window"
     initialX="calc(50vw - 160px)"
@@ -143,7 +142,6 @@ const menuItems = [
     </div>
   </div>
 
-  <BottomNav />
   <Taskbar menuItems={menuItems} />
 </Layout>
 
@@ -562,10 +560,14 @@ const menuItems = [
     });
   }
 
-  // Start menu - open windows
+  // Start menu - open windows (Admin navigates to /admin directly)
   document.querySelectorAll('[data-open-window]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = (btn as HTMLElement).dataset.openWindow!;
+      if (id === 'login-window') {
+        window.location.href = '/admin';
+        return;
+      }
       openWindow(id);
       document.getElementById('start-menu')?.classList.remove('open');
     });
@@ -596,10 +598,14 @@ const menuItems = [
       errorMessage.textContent = 'Login failed. Please try again.';
       errorDialog.style.display = 'flex';
     }
+    if (urlParams.get('error') === 'forbidden') {
+      errorMessage.textContent = 'You are not authorized to access admin.';
+      errorDialog.style.display = 'flex';
+    }
+  } else {
+    // Focus subscribe window on load (skip when login window is shown)
+    focusWindow('subscribe-window');
   }
-
-  // Focus subscribe window on load
-  focusWindow('subscribe-window');
 
   // Subscribe form logic
   const emailInput = document.getElementById('email') as HTMLInputElement;
