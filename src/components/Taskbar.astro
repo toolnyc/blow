@@ -39,24 +39,7 @@ const { menuItems = [] } = Astro.props;
 
 <style>
   .taskbar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 28px;
-    background: #c0c0c0;
-    border-top: 2px solid #ffffff;
-    display: flex;
-    align-items: center;
-    padding: 2px 2px;
-    gap: 2px;
-    z-index: 1000;
-  }
-
-  @media (max-width: 600px) {
-    .taskbar {
-      display: none;
-    }
+    display: none;
   }
 
   .start-button-container {
