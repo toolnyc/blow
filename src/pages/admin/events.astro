@@ -1,0 +1,1044 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Event Analysis — Blow">
+  <div class="ea-root">
+    <div class="ea-header">
+      <div class="ea-title-row">
+        <h1 class="ea-title">Event Analysis</h1>
+        <div class="ea-selector">
+          <select id="event-select" class="ea-select">
+            <option value="">Loading events...</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="loading" class="ea-loading">
+      <div class="ea-loading-text">Loading...</div>
+    </div>
+
+    <div id="empty-state" class="ea-empty hidden">
+      <p>No events found. Guest data will appear here after your first event.</p>
+    </div>
+
+    <div id="dashboard" class="ea-dashboard hidden">
+      <!-- Summary Stats Row -->
+      <div class="ea-stats-row">
+        <div class="ea-stat-card">
+          <div class="ea-stat-label">Total Guests</div>
+          <div class="ea-stat-value" id="stat-total">--</div>
+          <div class="ea-stat-sub">party size total</div>
+        </div>
+        <div class="ea-stat-card">
+          <div class="ea-stat-label">Checked In</div>
+          <div class="ea-stat-value" id="stat-checked">--</div>
+          <div class="ea-stat-sub">actual arrivals</div>
+        </div>
+        <div class="ea-stat-card">
+          <div class="ea-stat-label">Show Rate</div>
+          <div class="ea-stat-value" id="stat-showrate">--</div>
+          <div class="ea-stat-sub">checked in / total</div>
+        </div>
+        <div class="ea-stat-card">
+          <div class="ea-stat-label">Walk-ins</div>
+          <div class="ea-stat-value" id="stat-walkins">--</div>
+          <div class="ea-stat-sub" id="stat-walkins-sub">of limit</div>
+        </div>
+        <div class="ea-stat-card">
+          <div class="ea-stat-label">Revenue</div>
+          <div class="ea-stat-value" id="stat-revenue">--</div>
+          <div class="ea-stat-sub">estimated total</div>
+        </div>
+      </div>
+
+      <!-- Two-column layout: chart + revenue -->
+      <div class="ea-panels">
+        <!-- Arrival Timeline -->
+        <div class="ea-panel ea-panel-chart">
+          <div class="ea-panel-header">
+            <h2 class="ea-panel-title">Arrival Timeline</h2>
+            <span class="ea-panel-badge" id="peak-badge"></span>
+          </div>
+          <div class="ea-chart-wrap" id="chart-wrap">
+            <svg id="arrival-chart" class="ea-chart" viewBox="0 0 600 200" preserveAspectRatio="xMidYMid meet"></svg>
+            <div id="chart-empty" class="ea-chart-empty hidden">No check-in data</div>
+          </div>
+        </div>
+
+        <!-- Revenue Breakdown -->
+        <div class="ea-panel ea-panel-revenue">
+          <div class="ea-panel-header">
+            <h2 class="ea-panel-title">Revenue Breakdown</h2>
+          </div>
+          <div id="revenue-table-wrap">
+            <table class="ea-table ea-revenue-table">
+              <thead>
+                <tr>
+                  <th>Tier</th>
+                  <th class="num">Bookings</th>
+                  <th class="num">Tickets</th>
+                  <th class="num">Revenue</th>
+                  <th class="num">Avg</th>
+                </tr>
+              </thead>
+              <tbody id="revenue-body"></tbody>
+              <tfoot>
+                <tr class="ea-total-row">
+                  <td>Total</td>
+                  <td class="num" id="rev-total-bookings">--</td>
+                  <td class="num" id="rev-total-tickets">--</td>
+                  <td class="num" id="rev-total-revenue">--</td>
+                  <td class="num">--</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Insights -->
+      <div class="ea-panel ea-panel-insights">
+        <div class="ea-panel-header">
+          <h2 class="ea-panel-title">Insights</h2>
+        </div>
+        <div class="ea-insights" id="insights-list"></div>
+      </div>
+
+      <!-- Guest List Table -->
+      <div class="ea-panel ea-panel-guests">
+        <div class="ea-panel-header">
+          <h2 class="ea-panel-title">Guest List</h2>
+          <div class="ea-guest-controls">
+            <input type="search" id="guest-search" class="ea-search" placeholder="Filter guests..." autocomplete="off" />
+            <select id="guest-filter" class="ea-filter-select">
+              <option value="all">All guests</option>
+              <option value="checked-in">Checked in</option>
+              <option value="no-show">No-shows</option>
+              <option value="walk-in">Walk-ins</option>
+            </select>
+          </div>
+        </div>
+        <div class="ea-guest-table-wrap">
+          <table class="ea-table ea-guest-table">
+            <thead>
+              <tr>
+                <th class="sortable" data-col="name">Name</th>
+                <th class="sortable" data-col="ticket_type">Ticket Type</th>
+                <th class="sortable num" data-col="tickets">Party Size</th>
+                <th class="sortable num" data-col="checked_in_count">Checked In</th>
+                <th class="sortable" data-col="first_checked_in_at">Arrival Time</th>
+              </tr>
+            </thead>
+            <tbody id="guest-body"></tbody>
+          </table>
+          <div id="guest-empty" class="ea-guest-empty hidden">No guests match filter</div>
+        </div>
+        <div class="ea-guest-footer">
+          <span id="guest-count-label">0 guests</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<style is:global>
+  /* ── Admin dark theme override for events page ── */
+  body {
+    background: #0a0a0f;
+    color: #e0e0e0;
+  }
+
+  .admin-desktop {
+    background: #0a0a0f;
+  }
+
+  .admin-window {
+    background: #0a0a0f;
+    border: none;
+    box-shadow: none;
+  }
+
+  .admin-window .title-bar {
+    background: #111118;
+    border-bottom: 1px solid #1a1a25;
+  }
+
+  .admin-window .title-bar-text {
+    color: #e0e0e0;
+  }
+
+  .admin-body {
+    background: #0a0a0f;
+    padding: 0;
+  }
+
+  .admin-tabs {
+    background: #111118;
+    border-top: 1px solid #1a1a25;
+  }
+
+  .admin-tab {
+    background: #111118;
+    color: #808090;
+    border-color: #1a1a25;
+  }
+
+  .admin-tab.active {
+    background: #1a1a25;
+    color: #e0e0e0;
+    border-bottom-color: #1a1a25;
+  }
+
+  /* ── Event Analysis layout ── */
+  .ea-root {
+    padding: 16px 20px 48px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .ea-header {
+    margin-bottom: 20px;
+  }
+
+  .ea-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .ea-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #e0e0e0;
+    margin: 0;
+    font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
+  }
+
+  .ea-select {
+    background: #111118;
+    color: #e0e0e0;
+    border: 1px solid #2a2a35;
+    padding: 4px 8px;
+    font-size: 13px;
+    font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
+    min-width: 180px;
+    cursor: pointer;
+  }
+
+  .ea-select:focus {
+    outline: 1px solid var(--blow-red, #ff2845);
+    border-color: var(--blow-red, #ff2845);
+  }
+
+  .ea-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+  }
+
+  .ea-loading-text {
+    color: #808090;
+    font-size: 13px;
+  }
+
+  .ea-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    color: #808090;
+    font-size: 13px;
+  }
+
+  .hidden { display: none !important; }
+
+  /* ── Stats row ── */
+  .ea-stats-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .ea-stat-card {
+    background: #111118;
+    border: 1px solid #1a1a25;
+    padding: 14px 16px;
+    text-align: center;
+  }
+
+  .ea-stat-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #808090;
+    margin-bottom: 4px;
+  }
+
+  .ea-stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #ffffff;
+    font-family: 'Courier New', monospace;
+    line-height: 1.1;
+  }
+
+  .ea-stat-sub {
+    font-size: 10px;
+    color: #555566;
+    margin-top: 2px;
+  }
+
+  /* ── Panels ── */
+  .ea-panels {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .ea-panel {
+    background: #111118;
+    border: 1px solid #1a1a25;
+  }
+
+  .ea-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid #1a1a25;
+    gap: 8px;
+  }
+
+  .ea-panel-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #808090;
+    margin: 0;
+  }
+
+  .ea-panel-badge {
+    font-size: 11px;
+    color: var(--blow-red, #ff2845);
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* ── Chart ── */
+  .ea-chart-wrap {
+    padding: 12px 14px;
+    position: relative;
+    min-height: 180px;
+  }
+
+  .ea-chart {
+    width: 100%;
+    height: auto;
+  }
+
+  .ea-chart-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #555566;
+    font-size: 12px;
+  }
+
+  /* ── Tables (shared) ── */
+  .ea-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .ea-table th {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #808090;
+    padding: 6px 10px;
+    text-align: left;
+    border-bottom: 1px solid #1a1a25;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  .ea-table th.num,
+  .ea-table td.num {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+  }
+
+  .ea-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #0f0f18;
+    color: #c0c0d0;
+  }
+
+  .ea-table tbody tr:hover {
+    background: #15151f;
+  }
+
+  /* Revenue table */
+  .ea-revenue-table {
+    margin: 0;
+  }
+
+  .ea-total-row td {
+    font-weight: 700;
+    color: #ffffff;
+    border-top: 1px solid #2a2a35;
+    border-bottom: none;
+  }
+
+  /* ── Insights ── */
+  .ea-panel-insights {
+    margin-bottom: 16px;
+  }
+
+  .ea-insights {
+    padding: 12px 14px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 8px;
+  }
+
+  .ea-insight {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #0d0d14;
+    border: 1px solid #1a1a25;
+    font-size: 12px;
+    color: #c0c0d0;
+    line-height: 1.4;
+  }
+
+  .ea-insight-icon {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    margin-top: 1px;
+    color: #808090;
+  }
+
+  .ea-insight-value {
+    color: #ffffff;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* ── Guest list ── */
+  .ea-guest-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .ea-search {
+    background: #0a0a0f;
+    color: #e0e0e0;
+    border: 1px solid #2a2a35;
+    padding: 3px 8px;
+    font-size: 12px;
+    font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
+    width: 160px;
+  }
+
+  .ea-search:focus {
+    outline: 1px solid var(--blow-red, #ff2845);
+    border-color: var(--blow-red, #ff2845);
+  }
+
+  .ea-filter-select {
+    background: #0a0a0f;
+    color: #e0e0e0;
+    border: 1px solid #2a2a35;
+    padding: 3px 6px;
+    font-size: 12px;
+    font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
+    cursor: pointer;
+  }
+
+  .ea-guest-table-wrap {
+    overflow-x: auto;
+    position: relative;
+  }
+
+  .ea-guest-table th.sortable {
+    cursor: pointer;
+  }
+
+  .ea-guest-table th.sortable:hover {
+    color: #c0c0d0;
+  }
+
+  .ea-guest-table th.sort-asc::after {
+    content: ' \u25B2';
+    font-size: 8px;
+  }
+
+  .ea-guest-table th.sort-desc::after {
+    content: ' \u25BC';
+    font-size: 8px;
+  }
+
+  .ea-guest-table .no-show td {
+    color: #665555;
+  }
+
+  .ea-guest-table .no-show td:first-child {
+    border-left: 2px solid #553333;
+  }
+
+  .ea-guest-table .walkin-row td:first-child {
+    border-left: 2px solid #334455;
+  }
+
+  .ea-guest-empty {
+    padding: 24px;
+    text-align: center;
+    color: #555566;
+    font-size: 12px;
+  }
+
+  .ea-guest-footer {
+    padding: 6px 14px;
+    font-size: 11px;
+    color: #555566;
+    border-top: 1px solid #1a1a25;
+  }
+
+  .ea-pill {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border: 1px solid #2a2a35;
+    color: #808090;
+  }
+
+  .ea-pill-walkin {
+    color: #5588bb;
+    border-color: #334455;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .ea-stats-row {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .ea-panels {
+      grid-template-columns: 1fr;
+    }
+    .ea-insights {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .ea-stats-row {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .ea-root {
+      padding: 12px;
+    }
+    .ea-title-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .ea-guest-controls {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .ea-search {
+      width: 100%;
+    }
+  }
+</style>
+
+<script>
+  // ── State ──
+  let allGuests: Array<Record<string, unknown>> = [];
+  let sortCol = 'name';
+  let sortDir: 'asc' | 'desc' = 'asc';
+
+  // ── DOM refs ──
+  const eventSelect = document.getElementById('event-select') as HTMLSelectElement;
+  const loading = document.getElementById('loading') as HTMLDivElement;
+  const emptyState = document.getElementById('empty-state') as HTMLDivElement;
+  const dashboard = document.getElementById('dashboard') as HTMLDivElement;
+
+  // ── Init: load events list ──
+  async function init() {
+    try {
+      const res = await fetch('/api/events-list');
+      if (!res.ok) throw new Error('Failed to load events');
+      const data = await res.json();
+
+      if (!data.events || data.events.length === 0) {
+        loading.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      eventSelect.innerHTML = '';
+      for (const ev of data.events) {
+        const opt = document.createElement('option');
+        opt.value = ev.event;
+        opt.textContent = `${ev.event} (${ev.guestCount} guests)`;
+        eventSelect.appendChild(opt);
+      }
+
+      // Check URL param
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlEvent = urlParams.get('event');
+      if (urlEvent && data.events.some((e: Record<string, unknown>) => e.event === urlEvent)) {
+        eventSelect.value = urlEvent;
+      }
+
+      await loadEvent(eventSelect.value);
+    } catch (err) {
+      loading.classList.add('hidden');
+      emptyState.classList.remove('hidden');
+      const p = emptyState.querySelector('p');
+      if (p) p.textContent = 'Failed to load events. Are you logged in?';
+    }
+  }
+
+  eventSelect.addEventListener('change', () => {
+    const event = eventSelect.value;
+    const url = new URL(window.location.href);
+    url.searchParams.set('event', event);
+    window.history.replaceState({}, '', url.toString());
+    loadEvent(event);
+  });
+
+  // ── Load event data ──
+  async function loadEvent(event: string) {
+    loading.classList.remove('hidden');
+    dashboard.classList.add('hidden');
+
+    try {
+      const [statsRes, guestsRes] = await Promise.all([
+        fetch(`/api/event-stats?event=${encodeURIComponent(event)}`),
+        fetch(`/api/event-guests?event=${encodeURIComponent(event)}`),
+      ]);
+
+      if (!statsRes.ok || !guestsRes.ok) throw new Error('Failed to load data');
+
+      const stats = await statsRes.json();
+      const guestsData = await guestsRes.json();
+      allGuests = guestsData.guests;
+
+      renderStats(stats.summary);
+      renderChart(stats.arrivals);
+      renderRevenue(stats.tierBreakdown, stats.summary.totalRevenue);
+      renderInsights(stats.insights);
+      renderGuests();
+
+      if (stats.peakTime) {
+        const badge = document.getElementById('peak-badge');
+        if (badge) badge.textContent = `Peak: ${stats.peakTime} (${stats.peakCount})`;
+      }
+
+      loading.classList.add('hidden');
+      dashboard.classList.remove('hidden');
+    } catch (err) {
+      loading.classList.add('hidden');
+      dashboard.classList.remove('hidden');
+    }
+  }
+
+  // ── Render: Stats ──
+  function renderStats(s: Record<string, unknown>) {
+    setText('stat-total', String(s.totalGuests));
+    setText('stat-checked', String(s.checkedIn));
+    setText('stat-showrate', `${s.showRate}%`);
+    setText('stat-walkins', `${s.walkInCount}`);
+    setText('stat-walkins-sub', `of ${s.walkInLimit} limit`);
+    setText('stat-revenue', formatDollars(s.totalRevenue as number));
+  }
+
+  // ── Render: SVG Chart ──
+  function renderChart(arrivals: Array<{ time: string; count: number; cumulative: number }>) {
+    const svg = document.getElementById('arrival-chart') as unknown as SVGSVGElement;
+    const chartEmpty = document.getElementById('chart-empty') as HTMLDivElement;
+
+    // Clear previous
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    if (!arrivals || arrivals.length === 0) {
+      svg.style.display = 'none';
+      chartEmpty.classList.remove('hidden');
+      return;
+    }
+
+    svg.style.display = '';
+    chartEmpty.classList.add('hidden');
+
+    const W = 600;
+    const H = 200;
+    const padL = 40;
+    const padR = 14;
+    const padT = 14;
+    const padB = 30;
+    const chartW = W - padL - padR;
+    const chartH = H - padT - padB;
+
+    const maxVal = Math.max(...arrivals.map((a) => a.cumulative), 1);
+    const n = arrivals.length;
+
+    // Grid lines
+    const gridLines = 4;
+    for (let i = 0; i <= gridLines; i++) {
+      const y = padT + (chartH / gridLines) * i;
+      const val = Math.round(maxVal - (maxVal / gridLines) * i);
+      const line = svgEl('line', {
+        x1: String(padL),
+        y1: String(y),
+        x2: String(W - padR),
+        y2: String(y),
+        stroke: '#1a1a25',
+        'stroke-width': '1',
+      });
+      svg.appendChild(line);
+
+      const label = svgEl('text', {
+        x: String(padL - 6),
+        y: String(y + 3),
+        fill: '#555566',
+        'font-size': '9',
+        'font-family': "'Courier New', monospace",
+        'text-anchor': 'end',
+      });
+      label.textContent = String(val);
+      svg.appendChild(label);
+    }
+
+    // Area + line
+    const points: string[] = [];
+    const xStep = n > 1 ? chartW / (n - 1) : 0;
+
+    for (let i = 0; i < n; i++) {
+      const x = padL + (n > 1 ? xStep * i : chartW / 2);
+      const y = padT + chartH - (arrivals[i].cumulative / maxVal) * chartH;
+      points.push(`${x},${y}`);
+    }
+
+    // Area fill
+    const areaPoints = [
+      `${padL + (n > 1 ? 0 : chartW / 2)},${padT + chartH}`,
+      ...points,
+      `${padL + (n > 1 ? xStep * (n - 1) : chartW / 2)},${padT + chartH}`,
+    ];
+    const area = svgEl('polygon', {
+      points: areaPoints.join(' '),
+      fill: 'rgba(255, 40, 69, 0.08)',
+    });
+    svg.appendChild(area);
+
+    // Line
+    const polyline = svgEl('polyline', {
+      points: points.join(' '),
+      fill: 'none',
+      stroke: '#ff2845',
+      'stroke-width': '2',
+      'stroke-linejoin': 'round',
+    });
+    svg.appendChild(polyline);
+
+    // Data dots
+    for (let i = 0; i < n; i++) {
+      const x = padL + (n > 1 ? xStep * i : chartW / 2);
+      const y = padT + chartH - (arrivals[i].cumulative / maxVal) * chartH;
+      const dot = svgEl('circle', {
+        cx: String(x),
+        cy: String(y),
+        r: '3',
+        fill: '#ff2845',
+      });
+      svg.appendChild(dot);
+    }
+
+    // X-axis labels (show every Nth to avoid overlap)
+    const labelEvery = Math.max(1, Math.ceil(n / 8));
+    for (let i = 0; i < n; i += labelEvery) {
+      const x = padL + (n > 1 ? xStep * i : chartW / 2);
+      const label = svgEl('text', {
+        x: String(x),
+        y: String(H - 6),
+        fill: '#555566',
+        'font-size': '9',
+        'font-family': "'Courier New', monospace",
+        'text-anchor': 'middle',
+      });
+      label.textContent = arrivals[i].time;
+      svg.appendChild(label);
+    }
+
+    // Bar chart overlay for per-interval count (subtle)
+    const barMaxVal = Math.max(...arrivals.map((a) => a.count), 1);
+    const barW = Math.max(4, (chartW / n) * 0.6);
+    for (let i = 0; i < n; i++) {
+      const x = padL + (n > 1 ? xStep * i : chartW / 2) - barW / 2;
+      const barH = (arrivals[i].count / barMaxVal) * (chartH * 0.3);
+      const y = padT + chartH - barH;
+      const bar = svgEl('rect', {
+        x: String(x),
+        y: String(y),
+        width: String(barW),
+        height: String(barH),
+        fill: 'rgba(255, 40, 69, 0.15)',
+        rx: '1',
+      });
+      svg.appendChild(bar);
+    }
+  }
+
+  function svgEl(tag: string, attrs: Record<string, string>): SVGElement {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      el.setAttribute(k, v);
+    }
+    return el;
+  }
+
+  // ── Render: Revenue ──
+  function renderRevenue(
+    tiers: Record<string, { count: number; tickets: number; revenue: number }>,
+    totalRevenue: number
+  ) {
+    const tbody = document.getElementById('revenue-body') as HTMLTableSectionElement;
+    tbody.innerHTML = '';
+
+    let totalBookings = 0;
+    let totalTickets = 0;
+
+    const tierEntries = Object.entries(tiers).sort((a, b) => b[1].revenue - a[1].revenue);
+
+    for (const [name, data] of tierEntries) {
+      totalBookings += data.count;
+      totalTickets += data.tickets;
+      const avg = data.count > 0 ? Math.round(data.revenue / data.count) : 0;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${esc(name)}</td>
+        <td class="num">${data.count}</td>
+        <td class="num">${data.tickets}</td>
+        <td class="num">${formatDollars(data.revenue)}</td>
+        <td class="num">${formatDollars(avg)}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    setText('rev-total-bookings', String(totalBookings));
+    setText('rev-total-tickets', String(totalTickets));
+    setText('rev-total-revenue', formatDollars(totalRevenue));
+  }
+
+  // ── Render: Insights ──
+  function renderInsights(ins: Record<string, unknown>) {
+    const list = document.getElementById('insights-list') as HTMLDivElement;
+    list.innerHTML = '';
+
+    const items: Array<{ icon: string; text: string }> = [];
+
+    if (ins.peakTime) {
+      items.push({
+        icon: 'clock',
+        text: `Peak arrival was at <span class="ea-insight-value">${esc(String(ins.peakTime))}</span> (${ins.peakCount} check-ins)`,
+      });
+    }
+
+    if (typeof ins.beforeMidnightPct === 'number') {
+      items.push({
+        icon: 'moon',
+        text: `<span class="ea-insight-value">${ins.beforeMidnightPct}%</span> of guests arrived before midnight`,
+      });
+    }
+
+    if (typeof ins.noShowCount === 'number' && ins.noShowCount > 0) {
+      items.push({
+        icon: 'x',
+        text: `<span class="ea-insight-value">${ins.noShowCount}</span> no-shows (<span class="ea-insight-value">${ins.noShowRate}%</span> of pre-sale)`,
+      });
+    }
+
+    if (typeof ins.walkInCount === 'number') {
+      items.push({
+        icon: 'plus',
+        text: `Walk-ins filled <span class="ea-insight-value">${ins.walkInCount}</span> of <span class="ea-insight-value">${ins.walkInLimit}</span> slots`,
+      });
+    }
+
+    for (const item of items) {
+      const div = document.createElement('div');
+      div.className = 'ea-insight';
+      div.innerHTML = `${getSvgIcon(item.icon)}<span>${item.text}</span>`;
+      list.appendChild(div);
+    }
+  }
+
+  function getSvgIcon(name: string): string {
+    const icons: Record<string, string> = {
+      clock: '<svg class="ea-insight-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M8 4v4l2.5 1.5"/></svg>',
+      moon: '<svg class="ea-insight-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13.5 9.5a5.5 5.5 0 01-7-7 5.5 5.5 0 107 7z"/></svg>',
+      x: '<svg class="ea-insight-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5"/></svg>',
+      plus: '<svg class="ea-insight-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v6M5 8h6"/></svg>',
+    };
+    return icons[name] ?? '';
+  }
+
+  // ── Render: Guest list ──
+  function renderGuests() {
+    const tbody = document.getElementById('guest-body') as HTMLTableSectionElement;
+    const emptyEl = document.getElementById('guest-empty') as HTMLDivElement;
+    const countLabel = document.getElementById('guest-count-label') as HTMLSpanElement;
+    tbody.innerHTML = '';
+
+    const searchVal = (document.getElementById('guest-search') as HTMLInputElement).value.toLowerCase().trim();
+    const filterVal = (document.getElementById('guest-filter') as HTMLSelectElement).value;
+
+    let filtered = allGuests.slice();
+
+    // Apply filter
+    if (filterVal === 'checked-in') {
+      filtered = filtered.filter((g) => (g.checked_in_count as number) > 0);
+    } else if (filterVal === 'no-show') {
+      filtered = filtered.filter((g) => (g.checked_in_count as number) === 0);
+    } else if (filterVal === 'walk-in') {
+      filtered = filtered.filter((g) => g.ticket_type === 'Walk-in');
+    }
+
+    // Apply search
+    if (searchVal) {
+      filtered = filtered.filter((g) =>
+        (g.name as string).toLowerCase().includes(searchVal) ||
+        ((g.ticket_type as string) || '').toLowerCase().includes(searchVal)
+      );
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
+      let aVal = a[sortCol];
+      let bVal = b[sortCol];
+
+      if (sortCol === 'first_checked_in_at') {
+        aVal = aVal ? new Date(aVal as string).getTime() : 0;
+        bVal = bVal ? new Date(bVal as string).getTime() : 0;
+      }
+
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+
+      const aStr = String(aVal ?? '').toLowerCase();
+      const bStr = String(bVal ?? '').toLowerCase();
+      const cmp = aStr.localeCompare(bStr);
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+
+    if (filtered.length === 0) {
+      emptyEl.classList.remove('hidden');
+    } else {
+      emptyEl.classList.add('hidden');
+    }
+
+    for (const g of filtered) {
+      const isNoShow = (g.checked_in_count as number) === 0 && g.ticket_type !== 'Walk-in';
+      const isWalkin = g.ticket_type === 'Walk-in';
+      const tr = document.createElement('tr');
+      if (isNoShow) tr.className = 'no-show';
+      if (isWalkin) tr.classList.add('walkin-row');
+
+      const arrivalTime = g.first_checked_in_at
+        ? formatTime(new Date(g.first_checked_in_at as string))
+        : '--';
+
+      const ticketLabel = g.ticket_type === 'Walk-in'
+        ? `<span class="ea-pill ea-pill-walkin">Walk-in</span>`
+        : esc(String(g.ticket_type || 'Unknown'));
+
+      tr.innerHTML = `
+        <td>${esc(String(g.name))}</td>
+        <td>${ticketLabel}</td>
+        <td class="num">${g.tickets}</td>
+        <td class="num">${g.checked_in_count}/${g.tickets}</td>
+        <td>${arrivalTime}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    countLabel.textContent = `${filtered.length} guest${filtered.length !== 1 ? 's' : ''}`;
+
+    // Update sort indicators
+    document.querySelectorAll('.ea-guest-table th.sortable').forEach((th) => {
+      th.classList.remove('sort-asc', 'sort-desc');
+      if ((th as HTMLElement).dataset.col === sortCol) {
+        th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+      }
+    });
+  }
+
+  // ── Sorting ──
+  document.querySelectorAll('.ea-guest-table th.sortable').forEach((th) => {
+    th.addEventListener('click', () => {
+      const col = (th as HTMLElement).dataset.col ?? 'name';
+      if (sortCol === col) {
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortCol = col;
+        sortDir = 'asc';
+      }
+      renderGuests();
+    });
+  });
+
+  // ── Filtering ──
+  const guestSearch = document.getElementById('guest-search') as HTMLInputElement;
+  const guestFilter = document.getElementById('guest-filter') as HTMLSelectElement;
+  guestSearch.addEventListener('input', () => renderGuests());
+  guestFilter.addEventListener('change', () => renderGuests());
+
+  // ── Helpers ──
+  function setText(id: string, text: string) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
+
+  function formatDollars(cents: number): string {
+    if (cents === 0) return '$0';
+    return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  }
+
+  function formatTime(d: Date): string {
+    const h = d.getHours();
+    const m = d.getMinutes().toString().padStart(2, '0');
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${m} ${ampm}`;
+  }
+
+  function esc(str: string): string {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ── Boot ──
+  init();
+</script>

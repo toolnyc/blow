@@ -6,6 +6,8 @@ interface Props {
 }
 
 const { title = 'Blow Admin' } = Astro.props;
+
+const currentPath = Astro.url.pathname;
 ---
 
 <!doctype html>
@@ -32,7 +34,8 @@ const { title = 'Blow Admin' } = Astro.props;
       </div>
 
       <div class="admin-tabs">
-        <div class="admin-tab active">Dashboard</div>
+        <a href="/admin" class={`admin-tab${currentPath === '/admin' || currentPath === '/admin/' ? ' active' : ''}`}>Dashboard</a>
+        <a href="/admin/events" class={`admin-tab${currentPath.startsWith('/admin/events') ? ' active' : ''}`}>Events</a>
       </div>
     </div>
   </body>
@@ -110,6 +113,8 @@ const { title = 'Blow Admin' } = Astro.props;
     border-color: var(--win98-border-light, #ffffff) var(--win98-border-dark, #808080) var(--win98-border-dark, #808080) var(--win98-border-light, #ffffff);
     cursor: pointer;
     min-height: 24px;
+    text-decoration: none;
+    color: inherit;
   }
 
   .admin-tab.active {
