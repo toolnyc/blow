@@ -331,18 +331,8 @@ const menuItems = [
   /* Mobile responsive */
   @media (max-width: 600px) {
     :global(.window.draggable) {
-      position: static !important;
-      width: 100% !important;
+      width: calc(100vw - 24px);
       max-width: none;
-      flex: 1;
-      min-height: 0;
-      overflow: hidden;
-    }
-
-    :global(.window.draggable .window-body) {
-      padding: 6px;
-      gap: 6px;
-      overflow: hidden;
     }
 
     .field-row-stacked input {
@@ -351,24 +341,6 @@ const menuItems = [
 
     .mixtapes-content {
       min-width: 0;
-    }
-
-    .track-list {
-      max-height: 60px;
-    }
-
-    .wordmark {
-      max-width: 160px;
-    }
-
-    .events-content {
-      padding: 6px;
-    }
-
-    .ticket-buttons {
-      flex-direction: column;
-      gap: 4px;
-      margin-top: 6px;
     }
   }
 </style>
@@ -404,6 +376,21 @@ const menuItems = [
       isOpen: true,
       zIndex: 1,
     });
+
+    // Mobile positioning — compact stack
+    const isMobile = window.innerWidth <= 600;
+    if (isMobile) {
+      const mobilePositions: Record<string, { x: number; y: number }> = {
+        'subscribe-window': { x: 12, y: 10 },
+        'mixtapes-window': { x: 12, y: 190 },
+        'events-window': { x: 12, y: 440 },
+      };
+      const pos = mobilePositions[id];
+      if (pos) {
+        windowEl.style.left = `${pos.x}px`;
+        windowEl.style.top = `${pos.y}px`;
+      }
+    }
 
     // Bounds check - reposition if off screen
     const rect = windowEl.getBoundingClientRect();
@@ -591,14 +578,10 @@ const menuItems = [
     });
   }
 
-  // Start menu - open windows (Admin navigates to /admin directly)
+  // Start menu and bottom nav — open windows
   document.querySelectorAll('[data-open-window]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = (btn as HTMLElement).dataset.openWindow!;
-      if (id === 'login-window') {
-        window.location.href = '/admin';
-        return;
-      }
       openWindow(id);
       document.getElementById('start-menu')?.classList.remove('open');
     });
