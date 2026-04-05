@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
+import { ADMIN_EMAILS } from '../../../lib/auth';
 
 export const prerender = false;
 
@@ -23,24 +24,33 @@ export const POST: APIRoute = async ({ request, url }) => {
       });
     }
 
+    // Silently reject non-admin emails (return success to avoid enumeration)
+    if (!ADMIN_EMAILS.includes(email.toLowerCase())) {
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     const supabase = createClient(
       import.meta.env.SUPABASE_URL,
       import.meta.env.SUPABASE_ANON_KEY
     );
 
-    const origin = `${url.protocol}//${url.host}`;
+    // In dev, use the request origin so magic links point to localhost
+    const origin = import.meta.env.DEV
+      ? `${url.protocol}//${url.host}`
+      : (import.meta.env.SITE || `${url.protocol}//${url.host}`);
 
-    // Send magic link to whatever email the user enters.
-    // Authorization (who can access /admin) is enforced by middleware.
     const { error } = await supabase.auth.signInWithOtp({
       email: email.toLowerCase(),
       options: {
-        emailRedirectTo: `${origin}/api/auth/callback`,
+        emailRedirectTo: `${origin}/`,
       },
     });
 
     if (error) {
-      console.error('Auth OTP error:', error);
+      console.error('Auth OTP error:', error.message, error.status);
       return new Response(JSON.stringify({ error: 'Could not send login link' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },

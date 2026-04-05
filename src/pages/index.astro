@@ -595,6 +595,27 @@ const menuItems = [
   // Initial taskbar update
   updateTaskbar();
 
+  // Handle Supabase implicit auth flow (tokens in hash fragment)
+  if (window.location.hash.includes('access_token=')) {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+    if (accessToken && refreshToken) {
+      // Clear hash immediately to avoid token leakage
+      window.history.replaceState(null, '', window.location.pathname);
+      // Exchange tokens for cookies via server endpoint
+      fetch('/api/auth/callback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken }),
+      }).then((res) => {
+        if (res.ok) {
+          window.location.href = '/admin';
+        }
+      });
+    }
+  }
+
   // Hide login window by default (before checking URL params)
   closeWindow('login-window');
 
