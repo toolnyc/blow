@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import Window from '../components/Window.astro';
 import BootScreen from '../components/BootScreen.astro';
 import Taskbar from '../components/Taskbar.astro';
+import BottomNav from '../components/BottomNav.astro';
 
 const menuItems = [
   { id: 'subscribe-window', title: 'Subscribe', icon: '/icons/subscribe.svg' },
@@ -57,9 +58,9 @@ const menuItems = [
           <span class="time" id="time-total">0:00</span>
         </div>
         <div class="controls-row">
-          <button id="btn-prev" aria-label="Previous track"><svg width="12" height="12" viewBox="0 0 12 12"><rect x="0" y="1" width="2" height="10" fill="currentColor"/><polygon points="11,1 4,6 11,11" fill="currentColor"/></svg></button>
-          <button id="btn-play" aria-label="Play"><svg width="12" height="12" viewBox="0 0 12 12"><polygon points="2,1 10,6 2,11" fill="currentColor"/></svg></button>
-          <button id="btn-next" aria-label="Next track"><svg width="12" height="12" viewBox="0 0 12 12"><polygon points="1,1 8,6 1,11" fill="currentColor"/><rect x="10" y="1" width="2" height="10" fill="currentColor"/></svg></button>
+          <button id="btn-prev" aria-label="Previous track"><svg class="control-icon" width="16" height="16" viewBox="0 0 12 12"><rect x="0" y="1" width="2" height="10" fill="#000"/><polygon points="11,1 4,6 11,11" fill="#000"/></svg></button>
+          <button id="btn-play" aria-label="Play"><svg class="control-icon" width="16" height="16" viewBox="0 0 12 12"><polygon points="2,1 10,6 2,11" fill="#000"/></svg></button>
+          <button id="btn-next" aria-label="Next track"><svg class="control-icon" width="16" height="16" viewBox="0 0 12 12"><polygon points="1,1 8,6 1,11" fill="#000"/><rect x="10" y="1" width="2" height="10" fill="#000"/></svg></button>
           <input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="80" aria-label="Volume" />
         </div>
       </div>
@@ -142,6 +143,7 @@ const menuItems = [
     </div>
   </div>
 
+  <BottomNav />
   <Taskbar menuItems={menuItems} />
 </Layout>
 
@@ -236,11 +238,19 @@ const menuItems = [
   }
 
   .controls-row button {
-    min-width: 32px;
+    min-width: 36px;
+    min-height: 28px;
     font-size: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 4px;
+  }
+
+  .controls-row button :global(svg.control-icon) {
+    display: block;
+    pointer-events: none;
+    flex-shrink: 0;
   }
 
   .volume-slider {
@@ -322,9 +332,17 @@ const menuItems = [
   @media (max-width: 600px) {
     :global(.window.draggable) {
       position: static !important;
-      width: 100%;
+      width: 100% !important;
       max-width: none;
-      margin-bottom: 8px;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    :global(.window.draggable .window-body) {
+      padding: 6px;
+      gap: 6px;
+      overflow: hidden;
     }
 
     .field-row-stacked input {
@@ -335,18 +353,22 @@ const menuItems = [
       min-width: 0;
     }
 
+    .track-list {
+      max-height: 60px;
+    }
+
     .wordmark {
-      max-width: 200px;
+      max-width: 160px;
     }
 
     .events-content {
-      padding: 10px;
+      padding: 6px;
     }
 
     .ticket-buttons {
       flex-direction: column;
       gap: 4px;
-      margin-top: 8px;
+      margin-top: 6px;
     }
   }
 </style>
@@ -719,8 +741,8 @@ const menuItems = [
     }
   }
 
-  const PLAY_SVG = '<svg width="12" height="12" viewBox="0 0 12 12"><polygon points="2,1 10,6 2,11" fill="currentColor"/></svg>';
-  const PAUSE_SVG = '<svg width="12" height="12" viewBox="0 0 12 12"><rect x="2" y="1" width="3" height="10" fill="currentColor"/><rect x="7" y="1" width="3" height="10" fill="currentColor"/></svg>';
+  const PLAY_SVG = '<svg class="control-icon" width="16" height="16" viewBox="0 0 12 12"><polygon points="2,1 10,6 2,11" fill="#000"/></svg>';
+  const PAUSE_SVG = '<svg class="control-icon" width="16" height="16" viewBox="0 0 12 12"><rect x="2" y="1" width="3" height="10" fill="#000"/><rect x="7" y="1" width="3" height="10" fill="#000"/></svg>';
 
   audio.addEventListener('play', () => {
     isPlaying = true;
