@@ -47,11 +47,20 @@ const { title } = Astro.props;
       .desktop {
         position: relative;
         width: 100%;
-        height: calc(100vh - 64px);
+        height: calc(100vh - 28px);
         padding: 20px;
-        padding-bottom: 80px;
-        overflow-x: hidden;
-        overflow-y: auto;
+        overflow: hidden;
+      }
+
+      @media (max-width: 600px) {
+        .desktop {
+          height: calc(100vh - 28px);
+          padding: 8px;
+          padding-bottom: 36px;
+          overflow-y: auto;
+          overflow-x: hidden;
+          -webkit-overflow-scrolling: touch;
+        }
       }
 
       /* Brand color accent */
