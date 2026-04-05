@@ -1,45 +1,50 @@
 ---
+interface MenuItem {
+  id: string;
+  title: string;
+  icon?: string;
+}
+
+interface Props {
+  menuItems?: MenuItem[];
+}
+
+const { menuItems = [] } = Astro.props;
 ---
 
 <nav class="bottom-nav">
-  <button class="bottom-nav-item" data-open-window="subscribe-window">Subscribe</button>
-  <button class="bottom-nav-item" data-open-window="mixtapes-window">Mixtapes</button>
-  <button class="bottom-nav-item" data-open-window="events-window">Events</button>
-  <button class="bottom-nav-item" data-open-window="login-window">Admin</button>
+  {menuItems.map((item) => (
+    <button class="bottom-nav-item" data-open-window={item.id}>
+      {item.icon && <img src={item.icon} alt="" class="nav-icon" />}
+      <span>{item.title}</span>
+    </button>
+  ))}
 </nav>
 
 <style>
   .bottom-nav {
     position: fixed;
-    bottom: 28px;
+    bottom: 0;
     left: 0;
     right: 0;
     height: 36px;
     background: #c0c0c0;
     border-top: 2px solid #ffffff;
-    border-bottom: 2px solid #808080;
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     gap: 2px;
     padding: 2px 4px;
-    z-index: 999;
-  }
-
-  @media (max-width: 600px) {
-    .bottom-nav {
-      display: flex;
-      bottom: 0;
-      height: 36px;
-    }
+    z-index: 1000;
   }
 
   .bottom-nav-item {
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 4px;
     flex: 1;
-    max-width: 120px;
+    max-width: 140px;
     padding: 2px 8px;
     font-size: 11px;
     font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
@@ -61,5 +66,11 @@
 
   .bottom-nav-item:hover {
     background: #d4d4d4;
+  }
+
+  .nav-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
   }
 </style>
