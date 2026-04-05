@@ -30,12 +30,17 @@ const { menuItems = [] } = Astro.props;
     height: 36px;
     background: #c0c0c0;
     border-top: 2px solid #ffffff;
-    display: flex;
+    display: none;
     align-items: center;
-    justify-content: center;
     gap: 2px;
     padding: 2px 4px;
     z-index: 1000;
+  }
+
+  @media (max-width: 600px) {
+    .bottom-nav {
+      display: flex;
+    }
   }
 
   .bottom-nav-item {
