@@ -25,7 +25,17 @@
 
   /* Typography */
   --font-system: 'Pixelated MS Sans Serif', Arial, sans-serif;
+  --font-mono: 'Consolas', 'Courier New', monospace;
   --font-size-sm: 11px;
   --font-size-base: 13px;
   --font-size-lg: 16px;
+
+  /* Admin dashboard */
+  --admin-bg: #0a0a0f;
+  --admin-surface: #14141f;
+  --admin-surface-hover: #1e1e2e;
+  --admin-border: #2a2a3a;
+  --admin-text: #e0e0e0;
+  --admin-text-muted: #888899;
+  --admin-nav-height: 56px;
 }
