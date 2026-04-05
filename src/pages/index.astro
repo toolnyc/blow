@@ -78,10 +78,10 @@ const menuItems = [
     <div class="events-content">
       <p>Now Blowing</p>
       <p class="hint">Un petite soirée à NYC</p>
-      <p class="hint">May 5, 2026</p>
+      <p class="hint">May 3, 2026</p>
       <div class="ticket-buttons">
-        <button class="buy-btn" data-tier="regular">Regular — $20</button>
-        <button class="buy-btn" data-tier="supporter">Supporter — $30</button>
+        <button class="buy-btn" data-tier="regular" disabled>Regular — $20</button>
+        <button class="buy-btn" data-tier="supporter" disabled>Supporter — $30</button>
       </div>
     </div>
   </Window>
@@ -652,6 +652,7 @@ const menuItems = [
     progressBar.value = '0';
     timeCurrent.textContent = '0:00';
     timeTotal.textContent = '0:00';
+    updateMediaSession(track);
   }
 
   function togglePlay() {
@@ -730,6 +731,32 @@ const menuItems = [
       audio.play();
     });
   });
+
+  // Media Session API — lock screen / notification controls
+  function updateMediaSession(track: { title: string; url: string }) {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: track.title,
+        artist: 'Blow',
+        album: 'Blow Mixes',
+        artwork: [
+          { src: '/og-image.png', sizes: '512x512', type: 'image/png' },
+        ],
+      });
+      navigator.mediaSession.setActionHandler('play', () => audio.play());
+      navigator.mediaSession.setActionHandler('pause', () => audio.pause());
+      navigator.mediaSession.setActionHandler('previoustrack', () => {
+        const prev = (currentTrackIndex - 1 + tracks.length) % tracks.length;
+        loadTrack(prev);
+        audio.play();
+      });
+      navigator.mediaSession.setActionHandler('nexttrack', () => {
+        const next = (currentTrackIndex + 1) % tracks.length;
+        loadTrack(next);
+        audio.play();
+      });
+    }
+  }
 
   // Set initial volume
   audio.volume = 0.8;
