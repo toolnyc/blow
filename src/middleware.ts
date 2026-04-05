@@ -1,6 +1,12 @@
 import { defineMiddleware } from 'astro:middleware';
 import { createClient } from '@supabase/supabase-js';
 
+// Emails authorized to access /admin
+const ADMIN_EMAILS: string[] = [
+  'boss@blowme.nyc',
+  'inyourdirtyears@gmail.com',
+];
+
 export const onRequest = defineMiddleware(async ({ request, redirect, cookies }, next) => {
   const url = new URL(request.url);
 
@@ -15,7 +21,7 @@ export const onRequest = defineMiddleware(async ({ request, redirect, cookies },
     return redirect('/?login=1');
   }
 
-  // Verify the token by calling getUser
+  // Verify the token and check authorization
   const supabase = createClient(
     import.meta.env.SUPABASE_URL,
     import.meta.env.SUPABASE_ANON_KEY
@@ -24,10 +30,17 @@ export const onRequest = defineMiddleware(async ({ request, redirect, cookies },
   const { data, error } = await supabase.auth.getUser(accessToken);
 
   if (error || !data.user) {
-    // Token invalid or expired — clear cookies and redirect
     cookies.delete('sb-access-token', { path: '/' });
     cookies.delete('sb-refresh-token', { path: '/' });
     return redirect('/?login=1');
+  }
+
+  // Authorization: only allowed emails can access admin
+  const userEmail = data.user.email?.toLowerCase();
+  if (!userEmail || !ADMIN_EMAILS.includes(userEmail)) {
+    cookies.delete('sb-access-token', { path: '/' });
+    cookies.delete('sb-refresh-token', { path: '/' });
+    return redirect('/?login=1&error=forbidden');
   }
 
   return next();
