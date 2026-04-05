@@ -4,8 +4,84 @@ export const prerender = false;
 import AdminLayout from '../../layouts/AdminLayout.astro';
 ---
 
-<AdminLayout title="Event Analysis — Blow">
+<AdminLayout title="Events — Blow Admin">
   <div class="ea-root">
+    <!-- Tab switcher -->
+    <div class="ev-tabs">
+      <button class="ev-tab active" data-tab="manage">Manage</button>
+      <button class="ev-tab" data-tab="analysis">Analysis</button>
+    </div>
+
+    <!-- ═══ MANAGE TAB ═══ -->
+    <div id="tab-manage" class="ev-tab-content">
+      <div class="ev-manage-header">
+        <h1 class="ea-title">Events</h1>
+        <button id="btn-new-event" class="ev-btn-primary">+ NEW EVENT</button>
+      </div>
+
+      <!-- Event form (hidden by default) -->
+      <div id="event-form-wrap" class="ev-form-wrap hidden">
+        <div class="ea-panel">
+          <div class="ea-panel-header">
+            <h2 class="ea-panel-title" id="form-title">New Event</h2>
+            <button id="btn-cancel-form" class="ev-btn-cancel">CANCEL</button>
+          </div>
+          <form id="event-form" class="ev-form" autocomplete="off">
+            <input type="hidden" id="form-mode" value="create" />
+            <div class="ev-field">
+              <label class="ev-label" for="field-name">NAME</label>
+              <input type="text" id="field-name" class="ev-input" placeholder="Blow — May 3" required />
+            </div>
+            <div class="ev-field">
+              <label class="ev-label" for="field-slug">SLUG</label>
+              <input type="text" id="field-slug" class="ev-input" placeholder="may3" required />
+              <span class="ev-hint">Lowercase, no spaces. Used in URLs.</span>
+            </div>
+            <div class="ev-field">
+              <label class="ev-label" for="field-date">DATE</label>
+              <input type="date" id="field-date" class="ev-input" required />
+            </div>
+            <div class="ev-field">
+              <label class="ev-label" for="field-venue">VENUE</label>
+              <input type="text" id="field-venue" class="ev-input" placeholder="TBD" />
+            </div>
+            <div class="ev-field-row">
+              <div class="ev-field">
+                <label class="ev-label" for="field-capacity">CAPACITY</label>
+                <input type="number" id="field-capacity" class="ev-input" placeholder="200" min="0" />
+              </div>
+              <div class="ev-field">
+                <label class="ev-label" for="field-walkin-limit">WALK-IN LIMIT</label>
+                <input type="number" id="field-walkin-limit" class="ev-input" value="30" min="0" />
+              </div>
+            </div>
+            <div class="ev-field">
+              <label class="ev-label" for="field-stripe-url">STRIPE URL</label>
+              <input type="url" id="field-stripe-url" class="ev-input" placeholder="https://buy.stripe.com/..." />
+              <span class="ev-hint">Paste payment link from Stripe dashboard</span>
+            </div>
+            <div class="ev-form-actions">
+              <button type="submit" id="btn-submit" class="ev-btn-primary">CREATE EVENT</button>
+              <span id="form-feedback" class="ev-feedback"></span>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Event list -->
+      <div id="event-list-wrap">
+        <div id="event-list-loading" class="ea-loading">
+          <div class="ea-loading-text">Loading events...</div>
+        </div>
+        <div id="event-list-empty" class="ea-empty hidden">
+          <p>No events yet. Tap "+ NEW EVENT" to create one.</p>
+        </div>
+        <div id="event-list" class="ev-list hidden"></div>
+      </div>
+    </div>
+
+    <!-- ═══ ANALYSIS TAB ═══ -->
+    <div id="tab-analysis" class="ev-tab-content hidden">
     <div class="ea-header">
       <div class="ea-title-row">
         <h1 class="ea-title">Event Analysis</h1>
@@ -142,6 +218,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
         </div>
       </div>
     </div>
+    </div><!-- /tab-analysis -->
   </div>
 </AdminLayout>
 
@@ -568,6 +645,248 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     }
     .ea-search {
       width: 100%;
+    }
+  }
+
+  /* ═══ Event Management Styles ═══ */
+
+  /* Tab switcher */
+  .ev-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #1a1a25;
+  }
+
+  .ev-tab {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #808090;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .ev-tab:hover {
+    color: #c0c0d0;
+  }
+
+  .ev-tab.active {
+    color: #ff2845;
+    border-bottom-color: #ff2845;
+  }
+
+  .ev-tab-content.hidden {
+    display: none !important;
+  }
+
+  /* Manage header */
+  .ev-manage-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    gap: 12px;
+  }
+
+  /* Buttons */
+  .ev-btn-primary {
+    display: inline-block;
+    padding: 8px 20px;
+    background: #ff2845;
+    color: #ffffff;
+    border: none;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .ev-btn-primary:hover {
+    background: #cc1f37;
+  }
+
+  .ev-btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .ev-btn-cancel {
+    padding: 4px 12px;
+    background: none;
+    border: 1px solid #2a2a35;
+    color: #808090;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .ev-btn-cancel:hover {
+    color: #ff2845;
+    border-color: #ff2845;
+  }
+
+  /* Form */
+  .ev-form-wrap {
+    margin-bottom: 16px;
+  }
+
+  .ev-form {
+    padding: 14px;
+  }
+
+  .ev-field {
+    margin-bottom: 14px;
+    flex: 1;
+  }
+
+  .ev-field-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  .ev-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #808090;
+    margin-bottom: 4px;
+    font-family: 'Courier New', monospace;
+  }
+
+  .ev-input {
+    display: block;
+    width: 100%;
+    padding: 8px 10px;
+    background: #0a0a0f;
+    color: #e0e0e0;
+    border: none;
+    border-bottom: 1px solid #2a2a35;
+    font-size: 14px;
+    font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
+    transition: border-color 0.15s;
+  }
+
+  .ev-input:focus {
+    outline: none;
+    border-bottom-color: #ff2845;
+  }
+
+  .ev-input::placeholder {
+    color: #444455;
+  }
+
+  .ev-hint {
+    display: block;
+    font-size: 10px;
+    color: #555566;
+    margin-top: 2px;
+  }
+
+  .ev-form-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+  }
+
+  .ev-feedback {
+    font-size: 12px;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+  }
+
+  .ev-feedback.success {
+    color: #44bb66;
+  }
+
+  .ev-feedback.error {
+    color: #ff2845;
+  }
+
+  /* Event list */
+  .ev-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .ev-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    background: #111118;
+    border: 1px solid #1a1a25;
+    cursor: pointer;
+    transition: background 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .ev-list-item:hover {
+    background: #15151f;
+  }
+
+  .ev-list-item-left {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ev-list-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e0e0e0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ev-list-meta {
+    font-size: 11px;
+    color: #808090;
+    font-family: 'Courier New', monospace;
+    margin-top: 2px;
+  }
+
+  .ev-list-slug {
+    font-size: 11px;
+    color: #555566;
+    font-family: 'Courier New', monospace;
+  }
+
+  .ev-list-arrow {
+    color: #555566;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 600px) {
+    .ev-field-row {
+      flex-direction: column;
+      gap: 0;
+    }
+    .ev-manage-header {
+      flex-wrap: wrap;
+    }
+    .ev-tabs {
+      overflow-x: auto;
     }
   }
 </style>
@@ -1040,5 +1359,255 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   }
 
   // ── Boot ──
-  init();
+  // Only init analysis when that tab is shown
+  let analysisInitialized = false;
+
+  // ═══ Tab Switching ═══
+  const tabs = document.querySelectorAll('.ev-tab') as NodeListOf<HTMLButtonElement>;
+  const tabManage = document.getElementById('tab-manage') as HTMLDivElement;
+  const tabAnalysis = document.getElementById('tab-analysis') as HTMLDivElement;
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab;
+      tabs.forEach((t) => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      if (target === 'manage') {
+        tabManage.classList.remove('hidden');
+        tabAnalysis.classList.add('hidden');
+      } else {
+        tabManage.classList.add('hidden');
+        tabAnalysis.classList.remove('hidden');
+        if (!analysisInitialized) {
+          analysisInitialized = true;
+          init();
+        }
+      }
+    });
+  });
+
+  // ═══ Event Management ═══
+  interface ManagedEvent {
+    id: string;
+    slug: string;
+    name: string;
+    date: string;
+    venue: string | null;
+    walk_in_limit: number;
+    capacity: number | null;
+    stripe_url: string | null;
+    created_at: string;
+  }
+
+  const btnNew = document.getElementById('btn-new-event') as HTMLButtonElement;
+  const formWrap = document.getElementById('event-form-wrap') as HTMLDivElement;
+  const formEl = document.getElementById('event-form') as HTMLFormElement;
+  const formTitle = document.getElementById('form-title') as HTMLHeadingElement;
+  const formMode = document.getElementById('form-mode') as HTMLInputElement;
+  const btnSubmit = document.getElementById('btn-submit') as HTMLButtonElement;
+  const btnCancel = document.getElementById('btn-cancel-form') as HTMLButtonElement;
+  const feedback = document.getElementById('form-feedback') as HTMLSpanElement;
+  const listWrap = document.getElementById('event-list') as HTMLDivElement;
+  const listLoading = document.getElementById('event-list-loading') as HTMLDivElement;
+  const listEmpty = document.getElementById('event-list-empty') as HTMLDivElement;
+
+  const fieldName = document.getElementById('field-name') as HTMLInputElement;
+  const fieldSlug = document.getElementById('field-slug') as HTMLInputElement;
+  const fieldDate = document.getElementById('field-date') as HTMLInputElement;
+  const fieldVenue = document.getElementById('field-venue') as HTMLInputElement;
+  const fieldCapacity = document.getElementById('field-capacity') as HTMLInputElement;
+  const fieldWalkinLimit = document.getElementById('field-walkin-limit') as HTMLInputElement;
+  const fieldStripeUrl = document.getElementById('field-stripe-url') as HTMLInputElement;
+
+  let managedEvents: ManagedEvent[] = [];
+
+  // Auto-generate slug from name
+  fieldName.addEventListener('input', () => {
+    if (formMode.value === 'create') {
+      const name = fieldName.value;
+      // Extract date-like portions or simplify the name
+      const slug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+      fieldSlug.value = slug;
+    }
+  });
+
+  // Show new event form
+  btnNew.addEventListener('click', () => {
+    formMode.value = 'create';
+    formTitle.textContent = 'New Event';
+    btnSubmit.textContent = 'CREATE EVENT';
+    formEl.reset();
+    fieldWalkinLimit.value = '30';
+    feedback.textContent = '';
+    feedback.className = 'ev-feedback';
+    formWrap.classList.remove('hidden');
+    fieldName.focus();
+  });
+
+  // Cancel form
+  btnCancel.addEventListener('click', () => {
+    formWrap.classList.add('hidden');
+    feedback.textContent = '';
+  });
+
+  // Edit an event
+  function editEvent(ev: ManagedEvent) {
+    formMode.value = 'edit';
+    formTitle.textContent = `Edit: ${ev.name}`;
+    btnSubmit.textContent = 'SAVE CHANGES';
+    fieldName.value = ev.name;
+    fieldSlug.value = ev.slug;
+    fieldSlug.readOnly = true;
+    fieldDate.value = ev.date;
+    fieldVenue.value = ev.venue ?? '';
+    fieldCapacity.value = ev.capacity !== null ? String(ev.capacity) : '';
+    fieldWalkinLimit.value = String(ev.walk_in_limit);
+    fieldStripeUrl.value = ev.stripe_url ?? '';
+    feedback.textContent = '';
+    feedback.className = 'ev-feedback';
+    formWrap.classList.remove('hidden');
+    fieldName.focus();
+  }
+
+  // Submit form
+  formEl.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    feedback.textContent = '';
+    feedback.className = 'ev-feedback';
+    btnSubmit.disabled = true;
+
+    const slug = fieldSlug.value.trim().toLowerCase();
+    const name = fieldName.value.trim();
+    const date = fieldDate.value;
+    const venue = fieldVenue.value.trim();
+    const capacity = fieldCapacity.value ? parseInt(fieldCapacity.value, 10) : null;
+    const walkInLimit = fieldWalkinLimit.value ? parseInt(fieldWalkinLimit.value, 10) : 30;
+    const stripeUrl = fieldStripeUrl.value.trim();
+
+    const isEdit = formMode.value === 'edit';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    const payload: Record<string, unknown> = { slug, name, date };
+    if (venue) payload.venue = venue;
+    if (capacity !== null && !isNaN(capacity)) payload.capacity = capacity;
+    payload.walk_in_limit = walkInLimit;
+    if (stripeUrl) payload.stripe_url = stripeUrl;
+
+    try {
+      const res = await fetch('/api/events', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        feedback.textContent = `[ERROR: ${data.error ?? 'Unknown error'}]`;
+        feedback.className = 'ev-feedback error';
+        btnSubmit.disabled = false;
+        return;
+      }
+
+      feedback.textContent = '[SAVED]';
+      feedback.className = 'ev-feedback success';
+      btnSubmit.disabled = false;
+
+      // Reset form after create
+      if (!isEdit) {
+        setTimeout(() => {
+          formWrap.classList.add('hidden');
+          fieldSlug.readOnly = false;
+        }, 800);
+      }
+
+      // Refresh list
+      await loadManagedEvents();
+    } catch {
+      feedback.textContent = '[ERROR: Network error]';
+      feedback.className = 'ev-feedback error';
+      btnSubmit.disabled = false;
+    }
+  });
+
+  // Load event list
+  async function loadManagedEvents() {
+    listLoading.classList.remove('hidden');
+    listEmpty.classList.add('hidden');
+    listWrap.classList.add('hidden');
+
+    try {
+      const res = await fetch('/api/events');
+      if (!res.ok) throw new Error('Failed');
+      const data = await res.json();
+      managedEvents = data.events as ManagedEvent[];
+
+      if (managedEvents.length === 0) {
+        listLoading.classList.add('hidden');
+        listEmpty.classList.remove('hidden');
+        return;
+      }
+
+      renderEventList();
+      listLoading.classList.add('hidden');
+      listWrap.classList.remove('hidden');
+    } catch {
+      listLoading.classList.add('hidden');
+      listEmpty.classList.remove('hidden');
+      const p = listEmpty.querySelector('p');
+      if (p) p.textContent = 'Failed to load events.';
+    }
+  }
+
+  function renderEventList() {
+    listWrap.innerHTML = '';
+
+    for (const ev of managedEvents) {
+      const item = document.createElement('div');
+      item.className = 'ev-list-item';
+      item.setAttribute('role', 'button');
+      item.setAttribute('tabindex', '0');
+
+      const dateStr = new Date(ev.date + 'T00:00:00').toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+
+      const venuePart = ev.venue ? ` / ${escManage(ev.venue)}` : '';
+      const capPart = ev.capacity ? ` / cap ${ev.capacity}` : '';
+
+      item.innerHTML = `
+        <div class="ev-list-item-left">
+          <div class="ev-list-name">${escManage(ev.name)}</div>
+          <div class="ev-list-meta">${dateStr}${venuePart}${capPart}</div>
+          <div class="ev-list-slug">/${escManage(ev.slug)}</div>
+        </div>
+        <div class="ev-list-arrow">&rsaquo;</div>
+      `;
+
+      item.addEventListener('click', () => editEvent(ev));
+      item.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          editEvent(ev);
+        }
+      });
+
+      listWrap.appendChild(item);
+    }
+  }
+
+  function escManage(str: string): string {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ── Boot manage tab ──
+  loadManagedEvents();
 </script>
