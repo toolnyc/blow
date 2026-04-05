@@ -13,12 +13,21 @@ const TIER_LOOKUP_KEYS: Record<string, string> = {
 export const POST: APIRoute = async ({ request, url }) => {
   let tier: string;
   let quantity: number;
+  let event: string;
   try {
     const body = await request.json();
     tier = body.tier;
     quantity = body.quantity ?? 1;
+    event = body.event ?? 'may5';
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (!event || typeof event !== 'string') {
+    return new Response(JSON.stringify({ error: 'Invalid event parameter' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -56,7 +65,7 @@ export const POST: APIRoute = async ({ request, url }) => {
       mode: 'payment',
       success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/`,
-      metadata: { event: 'may5' },
+      metadata: { event },
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
