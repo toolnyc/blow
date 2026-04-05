@@ -20,7 +20,7 @@ const { data: nextEventRow } = await supabase
   .maybeSingle();
 
 const nextEventLabel = nextEventRow
-  ? new Date(nextEventRow.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  ? new Date(nextEventRow.date.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   : '—';
 const nextEventSub = nextEventRow ? nextEventRow.name : 'No upcoming events';
 
@@ -35,21 +35,69 @@ const { count: subscriberCount } = await supabase
   .from('subscribers')
   .select('*', { count: 'exact', head: true });
 
-// Revenue (sum of orders.amount_cents)
+// Revenue: use orders if available, else estimate from guests × tier prices
 const { data: revenueRows } = await supabase
   .from('orders')
   .select('amount_cents');
-const totalRevenueCents = (revenueRows ?? []).reduce((sum, r) => sum + (r.amount_cents ?? 0), 0);
+let totalRevenueCents = (revenueRows ?? []).reduce((sum: number, r: Record<string, unknown>) => sum + ((r.amount_cents as number) ?? 0), 0);
+
+// Fallback: estimate from guest ticket types when no order data
+if (totalRevenueCents === 0 && (ticketRows ?? []).length > 0) {
+  const TIER_PRICES: Record<string, number> = { 'Regular': 2000, 'Supporter': 3500, 'Walk-in': 2000 };
+  const { data: guestTiers } = await supabase
+    .from('guests')
+    .select('ticket_type, tickets');
+  totalRevenueCents = (guestTiers ?? []).reduce((sum: number, g: Record<string, unknown>) => {
+    const price = TIER_PRICES[(g.ticket_type as string) ?? ''] ?? 0;
+    return sum + ((g.tickets as number) ?? 0) * price;
+  }, 0);
+}
+
 const revenueDisplay = totalRevenueCents > 0
   ? `$${(totalRevenueCents / 100).toLocaleString('en-US', { minimumFractionDigits: 0 })}`
   : '$0';
 
-// Recent activity — last 10 guest check-ins / sign-ups
+// Recent activity — merge ticket purchases and newsletter sign-ups
 const { data: recentGuests } = await supabase
   .from('guests')
   .select('name, event, ticket_type, created_at, checked_in_count, first_checked_in_at')
   .order('created_at', { ascending: false })
   .limit(10);
+
+const { data: recentSubs } = await supabase
+  .from('subscribers')
+  .select('email, subscribed_at')
+  .order('subscribed_at', { ascending: false })
+  .limit(10);
+
+interface ActivityItem {
+  label: string;
+  detail: string;
+  date: string;
+}
+
+const activityItems: ActivityItem[] = [];
+
+for (const g of (recentGuests ?? [])) {
+  const action = g.checked_in_count > 0 ? 'checked in' : 'purchased';
+  activityItems.push({
+    label: g.name,
+    detail: `${action} · ${g.ticket_type ?? 'ticket'} · ${g.event}`,
+    date: g.created_at,
+  });
+}
+
+for (const s of (recentSubs ?? [])) {
+  activityItems.push({
+    label: s.email,
+    detail: 'subscribed to newsletter',
+    date: s.subscribed_at,
+  });
+}
+
+// Sort combined feed by date descending, take 10
+activityItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+const recentActivity = activityItems.slice(0, 10);
 ---
 
 <AdminLayout title="Dashboard — Blow Admin">
@@ -79,15 +127,14 @@ const { data: recentGuests } = await supabase
 
   <div class="dashboard-section">
     <h2 class="section-title">Recent Activity</h2>
-    {(recentGuests && recentGuests.length > 0) ? (
+    {recentActivity.length > 0 ? (
       <div class="activity-list">
-        {recentGuests.map((g) => {
-          const when = new Date(g.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          const action = g.checked_in_count > 0 ? 'checked in' : 'signed up';
+        {recentActivity.map((item) => {
+          const when = new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
           return (
             <div class="activity-row">
-              <span class="activity-name">{g.name}</span>
-              <span class="activity-detail">{action} · {g.ticket_type ?? 'ticket'} · {g.event}</span>
+              <span class="activity-name">{item.label}</span>
+              <span class="activity-detail">{item.detail}</span>
               <span class="activity-time">{when}</span>
             </div>
           );
