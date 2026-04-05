@@ -157,35 +157,22 @@ const { menuItems = [] } = Astro.props;
     text-align: right;
   }
 
-  @media (max-width: 600px) {
-    .system-tray {
-      display: none;
-    }
-  }
 </style>
 
 <script>
-  // Countdown to March 21, 2026 at 10:00 PM Eastern
-  const TARGET = new Date('2026-03-21T22:00:00-04:00').getTime();
-
-  function updateCountdown() {
+  // System clock
+  function updateClock() {
     const clock = document.getElementById('taskbar-clock');
     if (!clock) return;
-
-    const diff = TARGET - Date.now();
-    if (diff <= 0) {
-      clock.textContent = 'NOW BLOWING';
-      return;
-    }
-
-    const days = Math.floor(diff / 86400000);
-    const hrs = Math.floor((diff % 86400000) / 3600000);
-
-    const pad = (n: number) => String(n).padStart(2, '0');
-    clock.textContent = `${days}d ${pad(hrs)}h`;
+    const now = new Date();
+    const h = now.getHours();
+    const m = String(now.getMinutes()).padStart(2, '0');
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    clock.textContent = `${h12}:${m} ${ampm}`;
   }
-  updateCountdown();
-  setInterval(updateCountdown, 60000);
+  updateClock();
+  setInterval(updateClock, 10000);
 
   // Start menu toggle
   const startButton = document.getElementById('start-button');
