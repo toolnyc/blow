@@ -1,16 +1,11 @@
 import type { APIRoute } from 'astro';
-import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '../../lib/auth';
 
 export const prerender = false;
 
 export const GET: APIRoute = async ({ request, cookies }) => {
-  const accessToken = cookies.get('sb-access-token')?.value;
-  if (!accessToken) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+  const auth = await requireAdmin(cookies);
+  if (auth.error) return auth.error;
 
   const url = new URL(request.url);
   const event = url.searchParams.get('event');
@@ -21,10 +16,7 @@ export const GET: APIRoute = async ({ request, cookies }) => {
     });
   }
 
-  const supabase = createClient(
-    import.meta.env.SUPABASE_URL,
-    import.meta.env.SUPABASE_ANON_KEY
-  );
+  const supabase = auth.supabase;
 
   const { data: guests, error } = await supabase
     .from('guests')

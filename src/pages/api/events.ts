@@ -1,6 +1,5 @@
 import type { APIRoute } from 'astro';
-import { createClient } from '@supabase/supabase-js';
-import { ADMIN_EMAILS } from '../../lib/auth';
+import { requireAdmin } from '../../lib/auth';
 
 export const prerender = false;
 
@@ -16,33 +15,6 @@ interface EventRow {
   capacity: number | null;
   stripe_url: string | null;
   created_at: string;
-}
-
-async function requireAdmin(cookies: Parameters<APIRoute>[0]['cookies']): Promise<
-  { supabase: ReturnType<typeof createClient>; error?: never } |
-  { error: Response; supabase?: never }
-> {
-  const accessToken = cookies.get('sb-access-token')?.value;
-  if (!accessToken) {
-    return { error: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: JSON_HEADERS }) };
-  }
-
-  const supabase = createClient(
-    import.meta.env.SUPABASE_URL,
-    import.meta.env.SUPABASE_ANON_KEY,
-  );
-
-  const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
-  if (authError || !authData.user) {
-    return { error: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: JSON_HEADERS }) };
-  }
-
-  const userEmail = authData.user.email?.toLowerCase();
-  if (!userEmail || !ADMIN_EMAILS.includes(userEmail)) {
-    return { error: new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: JSON_HEADERS }) };
-  }
-
-  return { supabase };
 }
 
 // Slug validation: lowercase alphanumeric + hyphens

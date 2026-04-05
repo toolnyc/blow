@@ -55,10 +55,16 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
                 <input type="number" id="field-walkin-limit" class="ev-input" value="30" min="0" />
               </div>
             </div>
-            <div class="ev-field">
-              <label class="ev-label" for="field-stripe-url">STRIPE URL</label>
-              <input type="url" id="field-stripe-url" class="ev-input" placeholder="https://buy.stripe.com/..." />
-              <span class="ev-hint">Paste payment link from Stripe dashboard</span>
+            <!-- Ticket Tiers -->
+            <div class="ev-tiers-section">
+              <div class="ev-label" style="margin-bottom: var(--sp-2)">TICKET TIERS</div>
+              <div id="tiers-list" class="ev-tiers-list"></div>
+              <div class="ev-tier-add">
+                <input type="text" id="tier-name" class="ev-input ev-tier-input" placeholder="Tier name (e.g. Regular)" />
+                <input type="number" id="tier-price" class="ev-input ev-tier-input ev-tier-price" placeholder="Price ($)" min="1" step="1" />
+                <button type="button" id="btn-add-tier" class="ev-btn-tier-add">+ ADD</button>
+              </div>
+              <span class="ev-hint">Each tier creates a Stripe product automatically. Prices in USD.</span>
             </div>
             <div class="ev-form-actions">
               <button type="submit" id="btn-submit" class="ev-btn-primary">CREATE EVENT</button>
@@ -882,6 +888,102 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     flex-shrink: 0;
   }
 
+  /* ── Ticket Tiers ── */
+  .ev-tiers-section {
+    margin-bottom: var(--sp-4);
+  }
+
+  .ev-tiers-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-2);
+  }
+
+  .ev-tier-item {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-2) var(--sp-3);
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  .ev-tier-item-name {
+    flex: 1;
+    color: var(--text-primary);
+  }
+
+  .ev-tier-item-price {
+    color: var(--text-display);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ev-tier-item-status {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--success, #4ade80);
+  }
+
+  .ev-tier-item-status.pending {
+    color: var(--text-secondary);
+  }
+
+  .ev-tier-remove {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: var(--sp-1);
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  .ev-tier-remove:hover {
+    color: var(--accent);
+  }
+
+  .ev-tier-add {
+    display: flex;
+    gap: var(--sp-2);
+    align-items: flex-end;
+  }
+
+  .ev-tier-input {
+    flex: 1;
+  }
+
+  .ev-tier-price {
+    max-width: 100px;
+  }
+
+  .ev-btn-tier-add {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-2) var(--sp-3);
+    background: var(--surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border-visible);
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: 44px;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .ev-btn-tier-add:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
   /* ── Responsive (manage) ── */
   @media (max-width: 600px) {
     .ev-field-row {
@@ -1424,9 +1526,70 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   const fieldVenue = document.getElementById('field-venue') as HTMLInputElement;
   const fieldCapacity = document.getElementById('field-capacity') as HTMLInputElement;
   const fieldWalkinLimit = document.getElementById('field-walkin-limit') as HTMLInputElement;
-  const fieldStripeUrl = document.getElementById('field-stripe-url') as HTMLInputElement;
+  const tiersList = document.getElementById('tiers-list') as HTMLDivElement;
+  const tierNameInput = document.getElementById('tier-name') as HTMLInputElement;
+  const tierPriceInput = document.getElementById('tier-price') as HTMLInputElement;
+  const btnAddTier = document.getElementById('btn-add-tier') as HTMLButtonElement;
 
   let managedEvents: ManagedEvent[] = [];
+
+  interface TierItem {
+    id?: string;
+    name: string;
+    price_cents: number;
+    stripe_price_id?: string;
+    active?: boolean;
+  }
+
+  let pendingTiers: TierItem[] = [];
+  let savedTiers: TierItem[] = [];
+
+  // ── Tier management ──
+  btnAddTier.addEventListener('click', () => {
+    const name = tierNameInput.value.trim();
+    const priceStr = tierPriceInput.value.trim();
+    const priceDollars = parseFloat(priceStr);
+
+    if (!name || isNaN(priceDollars) || priceDollars <= 0) return;
+
+    pendingTiers.push({ name, price_cents: Math.round(priceDollars * 100) });
+    tierNameInput.value = '';
+    tierPriceInput.value = '';
+    tierNameInput.focus();
+    renderTiers();
+  });
+
+  function renderTiers() {
+    tiersList.innerHTML = '';
+    const allTiers = [...savedTiers.filter(t => t.active !== false), ...pendingTiers];
+
+    for (let i = 0; i < allTiers.length; i++) {
+      const t = allTiers[i];
+      const isSaved = !!t.id;
+      const div = document.createElement('div');
+      div.className = 'ev-tier-item';
+      div.innerHTML = `
+        <span class="ev-tier-item-name">${escManage(t.name)}</span>
+        <span class="ev-tier-item-price">$${(t.price_cents / 100).toFixed(0)}</span>
+        <span class="ev-tier-item-status ${isSaved ? '' : 'pending'}">${isSaved ? 'LIVE' : 'PENDING'}</span>
+      `;
+
+      if (!isSaved) {
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'ev-tier-remove';
+        removeBtn.type = 'button';
+        removeBtn.innerHTML = '&times;';
+        const pendingIdx = i - savedTiers.filter(t => t.active !== false).length;
+        removeBtn.addEventListener('click', () => {
+          pendingTiers.splice(pendingIdx, 1);
+          renderTiers();
+        });
+        div.appendChild(removeBtn);
+      }
+
+      tiersList.appendChild(div);
+    }
+  }
 
   // Auto-generate slug from name
   fieldName.addEventListener('input', () => {
@@ -1452,6 +1615,9 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     fieldWalkinLimit.value = '30';
     feedback.textContent = '';
     feedback.className = 'ev-feedback';
+    pendingTiers = [];
+    savedTiers = [];
+    renderTiers();
     formWrap.classList.remove('hidden');
     fieldName.focus();
   });
@@ -1462,8 +1628,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     feedback.textContent = '';
   });
 
-  // Edit an event
-  function editEvent(ev: ManagedEvent) {
+  // Edit an event — load existing tiers from DB
+  async function editEvent(ev: ManagedEvent) {
     formMode.value = 'edit';
     formTitle.textContent = `Edit: ${ev.name}`;
     btnSubmit.textContent = 'SAVE CHANGES';
@@ -1474,9 +1640,21 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     fieldVenue.value = ev.venue ?? '';
     fieldCapacity.value = ev.capacity !== null ? String(ev.capacity) : '';
     fieldWalkinLimit.value = String(ev.walk_in_limit);
-    fieldStripeUrl.value = ev.stripe_url ?? '';
     feedback.textContent = '';
     feedback.className = 'ev-feedback';
+
+    // Load tiers for this event
+    pendingTiers = [];
+    savedTiers = [];
+    try {
+      const res = await fetch(`/api/ticket-tiers?event=${encodeURIComponent(ev.slug)}`);
+      if (res.ok) {
+        const data = await res.json();
+        savedTiers = (data.tiers ?? []) as TierItem[];
+      }
+    } catch { /* ignore */ }
+    renderTiers();
+
     formWrap.classList.remove('hidden');
     fieldName.focus();
   }
@@ -1494,7 +1672,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     const venue = fieldVenue.value.trim();
     const capacity = fieldCapacity.value ? parseInt(fieldCapacity.value, 10) : null;
     const walkInLimit = fieldWalkinLimit.value ? parseInt(fieldWalkinLimit.value, 10) : 30;
-    const stripeUrl = fieldStripeUrl.value.trim();
 
     const isEdit = formMode.value === 'edit';
     const method = isEdit ? 'PUT' : 'POST';
@@ -1503,7 +1680,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     if (venue) payload.venue = venue;
     if (capacity !== null && !isNaN(capacity)) payload.capacity = capacity;
     payload.walk_in_limit = walkInLimit;
-    if (stripeUrl) payload.stripe_url = stripeUrl;
 
     try {
       const res = await fetch('/api/events', {
@@ -1521,8 +1697,41 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
         return;
       }
 
-      feedback.textContent = '[SAVED]';
-      feedback.className = 'ev-feedback success';
+      // Create any pending tiers via API
+      if (pendingTiers.length > 0) {
+        feedback.textContent = '[CREATING TIERS...]';
+        let tierErrors = 0;
+        for (let i = 0; i < pendingTiers.length; i++) {
+          const t = pendingTiers[i];
+          try {
+            const tierRes = await fetch('/api/ticket-tiers', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                event_slug: slug,
+                name: t.name,
+                price_cents: t.price_cents,
+                sort_order: savedTiers.length + i,
+              }),
+            });
+            if (!tierRes.ok) tierErrors++;
+          } catch {
+            tierErrors++;
+          }
+        }
+        pendingTiers = [];
+        if (tierErrors > 0) {
+          feedback.textContent = `[SAVED — ${tierErrors} tier(s) failed]`;
+          feedback.className = 'ev-feedback error';
+        } else {
+          feedback.textContent = '[SAVED]';
+          feedback.className = 'ev-feedback success';
+        }
+      } else {
+        feedback.textContent = '[SAVED]';
+        feedback.className = 'ev-feedback success';
+      }
+
       btnSubmit.disabled = false;
 
       // Reset form after create

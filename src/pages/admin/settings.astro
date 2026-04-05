@@ -2,16 +2,283 @@
 export const prerender = false;
 
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import { ADMIN_EMAILS } from '../../lib/auth';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  import.meta.env.SUPABASE_URL,
+  import.meta.env.SUPABASE_ANON_KEY
+);
+
+// Fetch counts
+const { count: subscriberCount } = await supabase
+  .from('subscribers')
+  .select('*', { count: 'exact', head: true });
+
+const { count: guestCount } = await supabase
+  .from('guests')
+  .select('*', { count: 'exact', head: true });
+
+const { count: eventCount } = await supabase
+  .from('events')
+  .select('*', { count: 'exact', head: true });
+
+const hasStripeKey = !!import.meta.env.STRIPE_SECRET_KEY;
+const hasResendKey = !!import.meta.env.RESEND_API_KEY;
 ---
 
 <AdminLayout title="Settings — Blow Admin">
-  <h1 class="page-title">Settings</h1>
+  <div class="se-root">
+    <h1 class="se-title">Settings</h1>
 
-  <div class="state-empty dot-grid">
-    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-      <circle cx="24" cy="24" r="5" stroke="currentColor" stroke-width="1.5"/>
-      <path d="M24 6a3 3 0 013 3v1.4a13 13 0 015.5 3.2l1.2-.7a3 3 0 014.1 1.1l.1.2a3 3 0 01-1.1 4.1l-1.2.7a13 13 0 010 6.2l1.2.7a3 3 0 011 4.2l-.1.2a3 3 0 01-4.1 1l-1.2-.7A13 13 0 0127 33.6V35a3 3 0 01-6 0v-1.4a13 13 0 01-5.5-3.2l-1.2.7a3 3 0 01-4.1-1.1l-.1-.2a3 3 0 011.1-4.1l1.2-.7a13 13 0 010-6.2l-1.2-.7a3 3 0 01-1-4.2l.1-.2a3 3 0 014.1-1l1.2.7A13 13 0 0121 10.4V9a3 3 0 013-3z" stroke="currentColor" stroke-width="1.5"/>
-    </svg>
-    <p>Settings coming soon.</p>
+    <!-- Integration Status -->
+    <div class="se-section">
+      <h2 class="se-section-title">INTEGRATIONS</h2>
+      <div class="se-cards">
+        <div class="se-card">
+          <div class="se-card-header">
+            <span class="se-card-name">Stripe</span>
+            <span class={`se-status ${hasStripeKey ? 'connected' : 'missing'}`}>
+              {hasStripeKey ? 'CONNECTED' : 'MISSING KEY'}
+            </span>
+          </div>
+          <p class="se-card-detail">Payment processing for ticket sales</p>
+        </div>
+        <div class="se-card">
+          <div class="se-card-header">
+            <span class="se-card-name">Supabase</span>
+            <span class="se-status connected">CONNECTED</span>
+          </div>
+          <p class="se-card-detail">Database &amp; authentication</p>
+        </div>
+        <div class="se-card">
+          <div class="se-card-header">
+            <span class="se-card-name">Resend</span>
+            <span class={`se-status ${hasResendKey ? 'connected' : 'missing'}`}>
+              {hasResendKey ? 'CONNECTED' : 'MISSING KEY'}
+            </span>
+          </div>
+          <p class="se-card-detail">Transactional email &amp; audience sync</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Database Stats -->
+    <div class="se-section">
+      <h2 class="se-section-title">DATABASE</h2>
+      <div class="se-stats-row">
+        <div class="se-stat">
+          <div class="se-stat-value">{eventCount ?? 0}</div>
+          <div class="se-stat-label">Events</div>
+        </div>
+        <div class="se-stat">
+          <div class="se-stat-value">{guestCount ?? 0}</div>
+          <div class="se-stat-label">Guests</div>
+        </div>
+        <div class="se-stat">
+          <div class="se-stat-value">{subscriberCount ?? 0}</div>
+          <div class="se-stat-label">Subscribers</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin Access -->
+    <div class="se-section">
+      <h2 class="se-section-title">ADMIN ACCESS</h2>
+      <div class="se-card">
+        <p class="se-card-detail" style="margin-bottom: var(--sp-2)">Authorized admin emails (configured in code):</p>
+        <ul class="se-email-list">
+          {ADMIN_EMAILS.map(email => (
+            <li class="se-email-item">{email}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+
+    <!-- Defaults -->
+    <div class="se-section">
+      <h2 class="se-section-title">DEFAULTS</h2>
+      <div class="se-card">
+        <div class="se-default-row">
+          <span class="se-default-label">Walk-in limit</span>
+          <span class="se-default-value">30</span>
+        </div>
+        <div class="se-default-row">
+          <span class="se-default-label">Max ticket quantity</span>
+          <span class="se-default-value">10</span>
+        </div>
+        <div class="se-default-row">
+          <span class="se-default-label">Currency</span>
+          <span class="se-default-value">USD</span>
+        </div>
+      </div>
+    </div>
   </div>
 </AdminLayout>
+
+<style is:global>
+  .se-root {
+    padding: var(--sp-4) var(--sp-5) calc(var(--sp-4) * 3);
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .se-title {
+    font-family: var(--font-heading);
+    font-size: 24px;
+    font-weight: 500;
+    color: var(--text-display);
+    margin: 0 0 var(--sp-5);
+  }
+
+  .se-section {
+    margin-bottom: var(--sp-5);
+  }
+
+  .se-section-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+    margin: 0 0 var(--sp-3);
+  }
+
+  .se-cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
+
+  .se-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-3) var(--sp-4);
+  }
+
+  .se-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-1);
+  }
+
+  .se-card-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+
+  .se-status {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+  }
+
+  .se-status.connected {
+    color: var(--success, #4ade80);
+    background: rgba(74, 222, 128, 0.1);
+  }
+
+  .se-status.missing {
+    color: var(--accent);
+    background: rgba(255, 40, 69, 0.1);
+  }
+
+  .se-card-detail {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0;
+    letter-spacing: 0.02em;
+  }
+
+  .se-stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--sp-2);
+  }
+
+  .se-stat {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-3) var(--sp-4);
+    text-align: center;
+  }
+
+  .se-stat-value {
+    font-family: var(--font-mono);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-display);
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .se-stat-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: var(--sp-1);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .se-email-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+  }
+
+  .se-email-item {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-primary);
+    padding: var(--sp-1) 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .se-email-item:last-child {
+    border-bottom: none;
+  }
+
+  .se-default-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--sp-2) 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .se-default-row:last-child {
+    border-bottom: none;
+  }
+
+  .se-default-label {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .se-default-value {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-display);
+    font-weight: 700;
+  }
+
+  @media (max-width: 600px) {
+    .se-stats-row {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

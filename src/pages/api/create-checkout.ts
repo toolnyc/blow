@@ -1,14 +1,10 @@
 import type { APIRoute } from 'astro';
 import Stripe from 'stripe';
+import { createClient } from '@supabase/supabase-js';
 
 export const prerender = false;
 
 const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY);
-
-const TIER_LOOKUP_KEYS: Record<string, string> = {
-  regular: 'blow-regular',
-  supporter: 'blow-supporter',
-};
 
 export const POST: APIRoute = async ({ request, url }) => {
   let tier: string;
@@ -18,7 +14,7 @@ export const POST: APIRoute = async ({ request, url }) => {
     const body = await request.json();
     tier = body.tier;
     quantity = body.quantity ?? 1;
-    event = body.event ?? 'may5';
+    event = body.event ?? '';
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
       status: 400,
@@ -33,9 +29,8 @@ export const POST: APIRoute = async ({ request, url }) => {
     });
   }
 
-  const lookupKey = TIER_LOOKUP_KEYS[tier];
-  if (!lookupKey) {
-    return new Response(JSON.stringify({ error: 'Invalid tier. Use "regular" or "supporter".' }), {
+  if (!tier || typeof tier !== 'string') {
+    return new Response(JSON.stringify({ error: 'Invalid tier parameter' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -48,24 +43,35 @@ export const POST: APIRoute = async ({ request, url }) => {
     });
   }
 
+  // Look up tier from DB
+  const supabase = createClient(
+    import.meta.env.SUPABASE_URL,
+    import.meta.env.SUPABASE_ANON_KEY,
+  );
+
+  const { data: tierData } = await supabase
+    .from('ticket_tiers')
+    .select('stripe_price_id, name, price_cents')
+    .eq('event_slug', event)
+    .ilike('name', tier)
+    .eq('active', true)
+    .single();
+
+  if (!tierData?.stripe_price_id) {
+    return new Response(JSON.stringify({ error: `No active tier "${tier}" found for event "${event}"` }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
-    const prices = await stripe.prices.list({ lookup_keys: [lookupKey], limit: 1 });
-    const price = prices.data[0];
-
-    if (!price) {
-      return new Response(JSON.stringify({ error: `No price found for tier "${tier}"` }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
     const origin = `${url.protocol}//${url.host}`;
     const session = await stripe.checkout.sessions.create({
-      line_items: [{ price: price.id, quantity }],
+      line_items: [{ price: tierData.stripe_price_id, quantity }],
       mode: 'payment',
       success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/`,
-      metadata: { event },
+      metadata: { event, tier: tierData.name },
     });
 
     return new Response(JSON.stringify({ url: session.url }), {

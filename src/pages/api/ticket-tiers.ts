@@ -1,0 +1,142 @@
+import type { APIRoute } from 'astro';
+import Stripe from 'stripe';
+import { requireAdmin } from '../../lib/auth';
+
+export const prerender = false;
+
+const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
+// GET — list tiers for an event
+export const GET: APIRoute = async ({ request, cookies }) => {
+  const auth = await requireAdmin(cookies);
+  if (auth.error) return auth.error;
+
+  const url = new URL(request.url);
+  const eventSlug = url.searchParams.get('event');
+  if (!eventSlug) {
+    return new Response(JSON.stringify({ error: 'Missing event parameter' }), { status: 400, headers: JSON_HEADERS });
+  }
+
+  const { data: tiers, error } = await auth.supabase
+    .from('ticket_tiers')
+    .select('*')
+    .eq('event_slug', eventSlug)
+    .order('sort_order');
+
+  if (error) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: JSON_HEADERS });
+  }
+
+  return new Response(JSON.stringify({ tiers: tiers ?? [] }), { status: 200, headers: JSON_HEADERS });
+};
+
+// POST — create a tier and its Stripe product/price
+export const POST: APIRoute = async ({ request, cookies }) => {
+  const auth = await requireAdmin(cookies);
+  if (auth.error) return auth.error;
+
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json() as Record<string, unknown>;
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400, headers: JSON_HEADERS });
+  }
+
+  const eventSlug = typeof body.event_slug === 'string' ? body.event_slug.trim() : '';
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  const priceCents = typeof body.price_cents === 'number' ? body.price_cents : 0;
+  const sortOrder = typeof body.sort_order === 'number' ? body.sort_order : 0;
+
+  if (!eventSlug || !name || priceCents <= 0) {
+    return new Response(JSON.stringify({ error: 'event_slug, name, and price_cents (> 0) are required' }), { status: 400, headers: JSON_HEADERS });
+  }
+
+  // Verify the event exists
+  const { data: event } = await auth.supabase
+    .from('events')
+    .select('slug, name')
+    .eq('slug', eventSlug)
+    .single();
+
+  if (!event) {
+    return new Response(JSON.stringify({ error: `Event "${eventSlug}" not found` }), { status: 404, headers: JSON_HEADERS });
+  }
+
+  // Create Stripe product + price
+  let stripeProductId = '';
+  let stripePriceId = '';
+
+  const stripeKey = import.meta.env.STRIPE_SECRET_KEY;
+  if (stripeKey) {
+    try {
+      const stripe = new Stripe(stripeKey);
+
+      const product = await stripe.products.create({
+        name: `${event.name} — ${name}`,
+        metadata: { event_slug: eventSlug, tier_name: name },
+      });
+
+      const price = await stripe.prices.create({
+        product: product.id,
+        unit_amount: priceCents,
+        currency: 'usd',
+        metadata: { event_slug: eventSlug, tier_name: name },
+      });
+
+      stripeProductId = product.id;
+      stripePriceId = price.id;
+    } catch (err) {
+      console.error('Stripe product creation error:', err);
+      return new Response(JSON.stringify({ error: 'Failed to create Stripe product/price' }), { status: 500, headers: JSON_HEADERS });
+    }
+  }
+
+  // Insert tier into DB
+  const { data: tier, error } = await auth.supabase
+    .from('ticket_tiers')
+    .insert({
+      event_slug: eventSlug,
+      name,
+      price_cents: priceCents,
+      stripe_price_id: stripePriceId || null,
+      stripe_product_id: stripeProductId || null,
+      sort_order: sortOrder,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: JSON_HEADERS });
+  }
+
+  return new Response(JSON.stringify({ tier }), { status: 201, headers: JSON_HEADERS });
+};
+
+// DELETE — deactivate a tier
+export const DELETE: APIRoute = async ({ request, cookies }) => {
+  const auth = await requireAdmin(cookies);
+  if (auth.error) return auth.error;
+
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json() as Record<string, unknown>;
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400, headers: JSON_HEADERS });
+  }
+
+  const tierId = typeof body.id === 'string' ? body.id : '';
+  if (!tierId) {
+    return new Response(JSON.stringify({ error: 'Tier id is required' }), { status: 400, headers: JSON_HEADERS });
+  }
+
+  const { error } = await auth.supabase
+    .from('ticket_tiers')
+    .update({ active: false })
+    .eq('id', tierId);
+
+  if (error) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: JSON_HEADERS });
+  }
+
+  return new Response(JSON.stringify({ success: true }), { status: 200, headers: JSON_HEADERS });
+};

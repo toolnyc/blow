@@ -1,43 +1,13 @@
 import type { APIRoute } from 'astro';
-import { createClient } from '@supabase/supabase-js';
+import { requireAdmin } from '../../lib/auth';
 
 export const prerender = false;
 
-const ADMIN_EMAILS: string[] = [
-  'boss@blowme.nyc',
-  'inyourdirtyears@gmail.com',
-];
-
 export const GET: APIRoute = async ({ request, cookies }) => {
-  // Auth check — require valid admin session
-  const accessToken = cookies.get('sb-access-token')?.value;
-  if (!accessToken) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+  const auth = await requireAdmin(cookies);
+  if (auth.error) return auth.error;
 
-  const supabase = createClient(
-    import.meta.env.SUPABASE_URL,
-    import.meta.env.SUPABASE_ANON_KEY
-  );
-
-  const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
-  if (authError || !authData.user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  const userEmail = authData.user.email?.toLowerCase();
-  if (!userEmail || !ADMIN_EMAILS.includes(userEmail)) {
-    return new Response(JSON.stringify({ error: 'Forbidden' }), {
-      status: 403,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+  const supabase = auth.supabase;
 
   // Parse event slug from query params
   const url = new URL(request.url);
