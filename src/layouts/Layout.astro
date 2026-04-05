@@ -1,4 +1,6 @@
 ---
+import '../styles/tokens.css';
+
 interface Props {
   title: string;
 }
@@ -45,24 +47,24 @@ const { title } = Astro.props;
       .desktop {
         position: relative;
         width: 100%;
-        height: calc(100vh - 28px);
+        height: calc(100vh - 64px);
         padding: 20px;
         overflow: hidden;
       }
 
       /* Brand color accent */
       .brand-accent {
-        color: #ff2845;
+        color: var(--blow-red);
       }
 
       /* Custom button with brand color */
       button.brand {
-        background: #ff2845;
+        background: var(--blow-red);
         color: white;
       }
 
       button.brand:active {
-        background: #cc1f37;
+        background: var(--blow-red-dark);
       }
     </style>
   </head>

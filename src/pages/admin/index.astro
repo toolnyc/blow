@@ -1,0 +1,42 @@
+---
+export const prerender = false;
+
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="Admin — Blow">
+  <div class="admin-container">
+    <div class="window">
+      <div class="title-bar">
+        <div class="title-bar-text">Admin Dashboard</div>
+      </div>
+      <div class="window-body admin-body">
+        <p>Coming soon.</p>
+        <form method="POST" action="/api/auth/logout">
+          <button type="submit">Logout</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .admin-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+  }
+
+  .admin-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 24px 32px;
+  }
+
+  .admin-body button {
+    min-width: 100px;
+  }
+</style>

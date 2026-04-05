@@ -1,0 +1,31 @@
+:root {
+  /* Brand */
+  --blow-red: #ff2845;
+  --blow-red-dark: #cc1f37;
+
+  /* Neutrals */
+  --surface-dark: #000080;
+  --surface-darker: #000058;
+  --text-light: #ffffff;
+  --text-muted: #808080;
+
+  /* Win98 system colors */
+  --win98-bg: #c0c0c0;
+  --win98-active: #000080;
+  --win98-white: #ffffff;
+  --win98-border-light: #ffffff;
+  --win98-border-dark: #808080;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  /* Typography */
+  --font-system: 'Pixelated MS Sans Serif', Arial, sans-serif;
+  --font-size-sm: 11px;
+  --font-size-base: 13px;
+  --font-size-lg: 16px;
+}

@@ -1,0 +1,57 @@
+---
+---
+
+<nav class="bottom-nav">
+  <button class="bottom-nav-item" data-open-window="subscribe-window">Subscribe</button>
+  <button class="bottom-nav-item" data-open-window="mixtapes-window">Mixtapes</button>
+  <button class="bottom-nav-item" data-open-window="events-window">Events</button>
+  <a class="bottom-nav-item" href="/admin">Admin</a>
+</nav>
+
+<style>
+  .bottom-nav {
+    position: fixed;
+    bottom: 28px;
+    left: 0;
+    right: 0;
+    height: 36px;
+    background: #c0c0c0;
+    border-top: 2px solid #ffffff;
+    border-bottom: 2px solid #808080;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 2px 4px;
+    z-index: 999;
+  }
+
+  .bottom-nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    max-width: 120px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
+    font-weight: bold;
+    text-decoration: none;
+    color: #000000;
+    background: #c0c0c0;
+    border: 2px solid;
+    border-color: #ffffff #808080 #808080 #ffffff;
+    cursor: pointer;
+    min-height: 24px;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .bottom-nav-item:active {
+    border-color: #808080 #ffffff #ffffff #808080;
+  }
+
+  .bottom-nav-item:hover {
+    background: #d4d4d4;
+  }
+</style>

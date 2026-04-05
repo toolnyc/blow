@@ -19,7 +19,7 @@ Blow is a DIY party series in New York. The site handles email capture, brand di
 - **Framework:** Astro 5 (SSR via `@astrojs/vercel`)
 - **Database:** Supabase (Postgres)
 - **Email:** Resend (transactional + audience sync)
-- **Payments:** Stripe (payment links, door QR codes)
+- **Payments:** Stripe (integrated checkout, door QR codes)
 - **Deployment:** Vercel
 - **Styling:** 98.css (Windows 98 retro theme)
 - **Brand color:** #ff2845
@@ -45,6 +45,8 @@ RESEND_FROM_EMAIL       # From address (boss@blowme.nyc)
 SUPABASE_URL            # Supabase project URL
 SUPABASE_ANON_KEY       # Supabase anonymous key
 DATABASE_URL            # Direct Postgres connection
+STRIPE_SECRET_KEY       # Stripe secret key (server-side only)
+STRIPE_WEBHOOK_SECRET   # Stripe webhook signing secret
 ```
 
 ---
@@ -59,6 +61,8 @@ src/
 │   └── api/
 │       ├── subscribe.ts         # Email subscription
 │       ├── checkin.ts           # Guest check-in (increment/undo)
+│       ├── create-checkout.ts    # Stripe checkout session
+│       ├── stripe-webhook.ts    # Stripe post-purchase webhook
 │       ├── add-guest.ts         # Walk-in guest entry
 │       └── delete-guest.ts      # Remove guest
 ├── components/

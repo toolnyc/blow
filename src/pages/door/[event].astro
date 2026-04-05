@@ -52,105 +52,131 @@ function rowClass(checked: number, total: number) {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
     <title>Blow — Door</title>
+    <link rel="stylesheet" href="https://unpkg.com/98.css" />
   </head>
   <body>
-    <div id="header">
-      <div class="header-top">
-        <img src="/wordmark.svg" class="logo" alt="Blow" />
-        <span id="stats">
-          <span id="stats-in">{checkedInPeople}</span> / {totalPeople} people in
-        </span>
+    <div class="window door-window">
+      <div class="title-bar">
+        <div class="title-bar-text">Blow — Door</div>
       </div>
-      <div class="search-row">
-        <input
-          type="search"
-          id="search"
-          placeholder="Search guests…"
-          autocomplete="off"
-          autocorrect="off"
-          spellcheck="false"
-        />
-        <button id="qr-toggle">QR</button>
-        <button id="add-toggle" disabled={walkInCount >= WALKIN_LIMIT}>+ Add</button>
-      </div>
-      <div id="walkin-bar">
-        Walk-ins: <span id="walkin-count">{walkInCount}</span> / {WALKIN_LIMIT}
-        {walkInCount >= WALKIN_LIMIT && <span id="walkin-full"> — FULL</span>}
-      </div>
-      <div id="add-form" class="add-form hidden">
-        <input
-          type="text"
-          id="add-name"
-          placeholder="Guest name"
-          autocomplete="off"
-          autocorrect="off"
-        />
-        <button id="add-submit">Add</button>
-        <button id="add-cancel" class="btn-cancel">Cancel</button>
+      <div class="window-body" id="header">
+        <div class="header-top">
+          <img src="/wordmark.svg" class="logo" alt="Blow" />
+          <span id="stats">
+            <span id="stats-in">{checkedInPeople}</span> / {totalPeople} people in
+          </span>
+        </div>
+        <div class="search-row field-row">
+          <input
+            type="search"
+            id="search"
+            placeholder="Search guests…"
+            autocomplete="off"
+            autocorrect="off"
+            spellcheck="false"
+          />
+          <button id="qr-toggle">QR</button>
+          <button id="add-toggle" disabled={walkInCount >= WALKIN_LIMIT}>+ Add</button>
+        </div>
+        <div id="walkin-bar">
+          Walk-ins: <span id="walkin-count">{walkInCount}</span> / {WALKIN_LIMIT}
+          {walkInCount >= WALKIN_LIMIT && <span id="walkin-full"> — FULL</span>}
+        </div>
+        <div id="add-form" class="add-form hidden">
+          <input
+            type="text"
+            id="add-name"
+            placeholder="Guest name"
+            autocomplete="off"
+            autocorrect="off"
+          />
+          <button id="add-submit" class="btn-brand">Add</button>
+          <button id="add-cancel">Cancel</button>
+        </div>
       </div>
     </div>
 
-    <div id="guest-list">
-      {guests.map((g) => {
-        const checked = g.checked_in_count as number;
-        const total = g.tickets as number;
-        const id = g.id as string;
-        return (
-          <div
-            class={`guest${rowClass(checked, total)}`}
-            id={`g-${id}`}
-            data-id={id}
-            data-checked={checked}
-            data-tickets={total}
-            data-name={(g.name as string).toLowerCase()}
-          >
-            <div class="info">
-              <div class="name">{g.name}</div>
-              {(total > 1 || g.notes || g.ticket_type === 'Walk-in') && (
-                <div class="meta">
-                  {g.ticket_type === 'Walk-in' && <span class="pill walkin">Walk-in</span>}
-                  {total > 1 && <span class="party-size">Party of {total}</span>}
-                  {g.notes && <span class="notes">{g.notes}</span>}
-                </div>
-              )}
+    <div class="sunken-panel guest-list-panel">
+      <div id="guest-list">
+        {guests.map((g) => {
+          const checked = g.checked_in_count as number;
+          const total = g.tickets as number;
+          const id = g.id as string;
+          return (
+            <div
+              class={`guest${rowClass(checked, total)}`}
+              id={`g-${id}`}
+              data-id={id}
+              data-checked={checked}
+              data-tickets={total}
+              data-name={(g.name as string).toLowerCase()}
+            >
+              <div class="info">
+                <div class="name">{g.name}</div>
+                {(total > 1 || g.notes || g.ticket_type === 'Walk-in') && (
+                  <div class="meta">
+                    {g.ticket_type === 'Walk-in' && <span class="pill walkin">Walk-in</span>}
+                    {total > 1 && <span class="party-size">Party of {total}</span>}
+                    {g.notes && <span class="notes">{g.notes}</span>}
+                  </div>
+                )}
+              </div>
+              <div class="actions" id={`actions-${id}`}>
+                {checked === 0 && (
+                  <button class="btn-in" data-action="in" data-id={id}>Check In</button>
+                )}
+                {checked > 0 && checked < total && (
+                  <>
+                    <span class="badge partial">{checked}/{total}</span>
+                    <button class="btn-in small" data-action="in" data-id={id}>+</button>
+                    <button class="btn-undo" data-action="undo" data-id={id}>−</button>
+                  </>
+                )}
+                {checked >= total && total > 0 && (
+                  <>
+                    <span class="badge full">✓{total > 1 ? ` ${total}/${total}` : ''}</span>
+                    <button class="btn-undo" data-action="undo" data-id={id}>−</button>
+                  </>
+                )}
+              </div>
+              <button class="btn-delete" data-action="delete" data-id={id} data-name={g.name as string}>×</button>
             </div>
-            <div class="actions" id={`actions-${id}`}>
-              {checked === 0 && (
-                <button class="btn-in" data-action="in" data-id={id}>Check In</button>
-              )}
-              {checked > 0 && checked < total && (
-                <>
-                  <span class="badge partial">{checked}/{total}</span>
-                  <button class="btn-in small" data-action="in" data-id={id}>+</button>
-                  <button class="btn-undo" data-action="undo" data-id={id}>−</button>
-                </>
-              )}
-              {checked >= total && total > 0 && (
-                <>
-                  <span class="badge full">✓{total > 1 ? ` ${total}/${total}` : ''}</span>
-                  <button class="btn-undo" data-action="undo" data-id={id}>−</button>
-                </>
-              )}
-            </div>
-            <button class="btn-delete" data-action="delete" data-id={id} data-name={g.name as string}>×</button>
-          </div>
-        );
-      })}
-      <div id="no-results">No guests found</div>
+          );
+        })}
+        <div id="no-results">No guests found</div>
+      </div>
     </div>
 
     <div id="qr-modal" class="qr-modal hidden">
-      <div class="qr-card" set:html={qrSvg} />
+      <div class="window qr-window">
+        <div class="title-bar">
+          <div class="title-bar-text">QR Code</div>
+          <div class="title-bar-controls">
+            <button aria-label="Close" id="qr-close"></button>
+          </div>
+        </div>
+        <div class="window-body qr-body">
+          <div class="qr-card" set:html={qrSvg} />
+        </div>
+      </div>
     </div>
 
     <div id="pin-modal" class="pin-modal hidden">
-      <div class="pin-card">
-        <div class="pin-title" id="pin-title">Enter PIN to add guest</div>
-        <input type="password" id="pin-input" inputmode="numeric" maxlength="4" placeholder="••••" />
-        <div class="pin-error hidden" id="pin-error">Incorrect PIN</div>
-        <div class="pin-buttons">
-          <button id="pin-cancel" class="btn-cancel">Cancel</button>
-          <button id="pin-submit">OK</button>
+      <div class="window pin-window">
+        <div class="title-bar">
+          <div class="title-bar-text">PIN Required</div>
+          <div class="title-bar-controls">
+            <button aria-label="Close" id="pin-close-x"></button>
+          </div>
+        </div>
+        <div class="window-body pin-body">
+          <div class="pin-title" id="pin-title">Enter PIN to add guest</div>
+          <input type="password" id="pin-input" inputmode="numeric" maxlength="4" placeholder="••••" />
+          <div class="pin-error hidden" id="pin-error">Incorrect PIN</div>
+          <div class="pin-buttons">
+            <button id="pin-cancel">Cancel</button>
+            <button id="pin-submit" class="btn-brand">OK</button>
+          </div>
         </div>
       </div>
     </div>
@@ -204,6 +230,9 @@ function rowClass(checked: number, total: number) {
       });
       qrModal.addEventListener('click', () => qrModal.classList.add('hidden'));
       qrModal.querySelector('.qr-card').addEventListener('click', (e) => e.stopPropagation());
+      qrModal.querySelector('.qr-window').addEventListener('click', (e) => e.stopPropagation());
+      const qrCloseBtn = document.getElementById('qr-close');
+      if (qrCloseBtn) qrCloseBtn.addEventListener('click', () => qrModal.classList.add('hidden'));
 
       // PIN modal — generic, calls pinCallback on success
       const PIN = '0803';
@@ -239,6 +268,15 @@ function rowClass(checked: number, total: number) {
       pinSubmit.addEventListener('click', checkPin);
       pinInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkPin(); });
       pinCancel.addEventListener('click', () => {
+        pinModal.classList.add('hidden');
+        pinCallback = null;
+        pinInput.value = '';
+        pinError.classList.add('hidden');
+      });
+
+      // PIN close X button
+      const pinCloseX = document.getElementById('pin-close-x');
+      if (pinCloseX) pinCloseX.addEventListener('click', () => {
         pinModal.classList.add('hidden');
         pinCallback = null;
         pinInput.value = '';
@@ -410,74 +448,272 @@ function rowClass(checked: number, total: number) {
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #f0f0f0;
-    color: #111;
+    font-family: 'Pixelated MS Sans Serif', Arial, sans-serif;
+    background: var(--surface-dark, #000080);
+    color: var(--text-light, #ffffff);
+  }
+
+  /* Door window — full width, no max */
+  .door-window {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .door-window .title-bar {
+    background: var(--surface-dark, #000080);
+  }
+
+  .door-window .title-bar-text {
+    color: var(--text-light, #ffffff);
   }
 
   #header {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: #111;
-    padding: 12px 16px 10px;
+    background: var(--surface-darker, #000058);
+    padding: 8px;
   }
 
   .header-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
 
   .logo {
     height: 26px;
     width: auto;
+    filter: brightness(0) invert(1);
   }
 
   #stats {
-    font-size: 13px;
-    color: #888;
+    font-size: var(--font-size-base, 13px);
+    color: var(--text-muted, #808080);
   }
 
   #stats-in {
-    color: white;
+    color: var(--text-light, #ffffff);
     font-weight: 700;
   }
 
   .search-row {
     display: flex;
-    gap: 8px;
+    gap: 4px;
   }
 
   #search {
     flex: 1;
-    padding: 9px 12px;
-    border: none;
-    border-radius: 8px;
-    background: #2a2a2a;
-    color: white;
+    padding: 4px 6px;
     font-size: 16px;
-    outline: none;
   }
-
-  #search::placeholder { color: #555; }
 
   #qr-toggle {
-    padding: 0 14px;
-    background: #2a2a2a;
-    color: #aaa;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
+    padding: 0 10px;
+    font-size: var(--font-size-base, 13px);
     font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    min-height: 40px;
+    min-height: 28px;
   }
 
-  #qr-toggle:active { background: #3a3a3a; }
+  #add-toggle {
+    padding: 0 10px;
+    font-size: var(--font-size-base, 13px);
+    font-weight: 600;
+    min-height: 28px;
+  }
 
+  #add-toggle:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  #walkin-bar {
+    font-size: var(--font-size-sm, 11px);
+    color: var(--text-muted, #808080);
+    margin-top: 6px;
+    text-align: right;
+  }
+
+  #walkin-full {
+    color: var(--blow-red, #ff2845);
+    font-weight: 700;
+  }
+
+  .add-form {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+  }
+
+  .add-form.hidden { display: none; }
+
+  #add-name {
+    flex: 1;
+    padding: 4px 6px;
+    font-size: 16px;
+  }
+
+  #add-submit {
+    padding: 0 12px;
+    font-weight: 700;
+    min-height: 28px;
+  }
+
+  .btn-brand {
+    background: var(--blow-red, #ff2845);
+    color: var(--text-light, #ffffff);
+    border: none;
+  }
+
+  .btn-brand:active {
+    background: var(--blow-red-dark, #cc1f37);
+  }
+
+  /* Guest list panel */
+  .guest-list-panel {
+    margin: 2px 0;
+    background: var(--win98-bg, #c0c0c0);
+    overflow-y: auto;
+    height: calc(100vh - 200px);
+  }
+
+  #guest-list { padding: 0; }
+
+  .guest {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 8px;
+    background: var(--win98-white, #ffffff);
+    border-bottom: 1px solid var(--win98-border-dark, #808080);
+    min-height: 48px;
+    color: #000000;
+  }
+
+  .guest.partial { background: #fff8e1; }
+  .guest.full    { background: #e8f5e9; }
+  .guest.hidden  { display: none; }
+
+  .guest.new-guest {
+    border-left: 3px solid var(--blow-red, #ff2845);
+  }
+
+  .info {
+    flex: 1;
+    min-width: 0;
+    padding-right: 8px;
+  }
+
+  .name {
+    font-size: var(--font-size-lg, 16px);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #000000;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+    align-items: baseline;
+  }
+
+  .pill {
+    font-size: var(--font-size-sm, 11px);
+    font-weight: 700;
+    padding: 1px 6px;
+    border: 1px solid var(--win98-border-dark, #808080);
+  }
+
+  .pill.walkin {
+    background: #e8f0fe;
+    color: #1a56db;
+  }
+
+  .party-size {
+    font-size: var(--font-size-sm, 11px);
+    font-weight: 700;
+    background: var(--win98-bg, #c0c0c0);
+    color: #000000;
+    padding: 1px 6px;
+    border: 1px solid var(--win98-border-dark, #808080);
+  }
+
+  .notes {
+    font-size: var(--font-size-sm, 11px);
+    color: var(--text-muted, #808080);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  /* Override 98.css button base for door page */
+  .guest button,
+  .add-form button,
+  .search-row button,
+  .pin-buttons button {
+    cursor: pointer;
+    font-size: var(--font-size-base, 13px);
+    font-weight: 700;
+    min-height: 28px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .btn-in {
+    background: var(--blow-red, #ff2845);
+    color: var(--text-light, #ffffff);
+    border: none;
+    padding: 4px 12px;
+    min-height: 28px;
+  }
+
+  .btn-in:active { background: var(--blow-red-dark, #cc1f37); }
+
+  .btn-in.small {
+    font-size: 18px;
+    padding: 4px 10px;
+  }
+
+  .btn-undo {
+    font-size: 18px;
+    padding: 4px 10px;
+    min-height: 28px;
+  }
+
+  button:disabled { opacity: 0.4; }
+
+  .badge {
+    font-size: var(--font-size-base, 13px);
+    font-weight: 700;
+    padding: 2px 8px;
+    white-space: nowrap;
+    border: 1px solid var(--win98-border-dark, #808080);
+  }
+
+  .badge.partial { background: #ffca28; color: #333; }
+  .badge.full    { background: #43a047; color: white; }
+
+  .btn-delete {
+    background: none;
+    border: none;
+    color: var(--text-muted, #808080);
+    font-size: 16px;
+    font-weight: 400;
+    padding: 0 4px 0 8px;
+    min-height: 28px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .btn-delete:active { color: var(--blow-red, #ff2845); }
+
+  /* QR modal — 98.css window chrome */
   .qr-modal {
     position: fixed;
     inset: 0;
@@ -491,16 +727,25 @@ function rowClass(checked: number, total: number) {
 
   .qr-modal.hidden { display: none; }
 
-  .qr-card {
-    background: white;
-    border-radius: 16px;
-    padding: 20px;
-    width: min(80vw, 80vh);
-    height: min(80vw, 80vh);
+  .qr-window {
+    width: min(85vw, 85vh);
+    cursor: default;
+  }
+
+  .qr-body {
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: default;
+    padding: 8px;
+  }
+
+  .qr-card {
+    background: white;
+    padding: 12px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .qr-card svg {
@@ -508,216 +753,7 @@ function rowClass(checked: number, total: number) {
     height: 100%;
   }
 
-  #add-toggle {
-    padding: 0 14px;
-    background: #2a2a2a;
-    color: #aaa;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    min-height: 40px;
-  }
-
-  #add-toggle:active { background: #3a3a3a; }
-  #add-toggle:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  #walkin-bar {
-    font-size: 12px;
-    color: #666;
-    margin-top: 8px;
-    text-align: right;
-  }
-
-  #walkin-full {
-    color: #ff2845;
-    font-weight: 700;
-  }
-
-  .add-form {
-    display: flex;
-    gap: 8px;
-    margin-top: 8px;
-  }
-
-  .add-form.hidden { display: none; }
-
-  #add-name {
-    flex: 1;
-    padding: 9px 12px;
-    border: none;
-    border-radius: 8px;
-    background: #2a2a2a;
-    color: white;
-    font-size: 16px;
-    outline: none;
-  }
-
-  #add-name::placeholder { color: #555; }
-
-  #add-submit {
-    padding: 0 16px;
-    background: #ff2845;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    min-height: 40px;
-  }
-
-  #add-submit:active { background: #cc1f37; }
-
-  .btn-cancel {
-    padding: 0 14px;
-    background: #2a2a2a;
-    color: #aaa;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    cursor: pointer;
-    min-height: 40px;
-  }
-
-  #guest-list { padding: 6px 0; }
-
-  .guest {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 11px 16px;
-    background: white;
-    border-bottom: 1px solid #e8e8e8;
-    min-height: 62px;
-  }
-
-  .guest.partial { background: #fff8e1; }
-  .guest.full    { background: #e8f5e9; }
-  .guest.hidden  { display: none; }
-
-  .guest.new-guest {
-    border-left: 3px solid #ff2845;
-  }
-
-  .info {
-    flex: 1;
-    min-width: 0;
-    padding-right: 12px;
-  }
-
-  .name {
-    font-size: 16px;
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 3px;
-    align-items: baseline;
-  }
-
-  .pill {
-    font-size: 11px;
-    font-weight: 700;
-    padding: 1px 7px;
-    border-radius: 10px;
-  }
-
-  .pill.walkin {
-    background: #e8f0fe;
-    color: #1a56db;
-  }
-
-  .party-size {
-    font-size: 12px;
-    font-weight: 700;
-    background: #e8e8e8;
-    color: #444;
-    padding: 1px 7px;
-    border-radius: 10px;
-  }
-
-  .notes {
-    font-size: 11px;
-    color: #aaa;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .actions {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-  }
-
-  button {
-    cursor: pointer;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 700;
-    min-height: 42px;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-  }
-
-  .btn-in {
-    background: #ff2845;
-    color: white;
-    padding: 0 16px;
-  }
-
-  .btn-in:active { background: #cc1f37; }
-
-  .btn-in.small {
-    font-size: 20px;
-    padding: 0 13px;
-  }
-
-  .btn-undo {
-    background: #e0e0e0;
-    color: #444;
-    font-size: 20px;
-    padding: 0 13px;
-  }
-
-  .btn-undo:active { background: #ccc; }
-
-  button:disabled { opacity: 0.4; }
-
-  .badge {
-    font-size: 13px;
-    font-weight: 700;
-    padding: 4px 9px;
-    border-radius: 5px;
-    white-space: nowrap;
-  }
-
-  .badge.partial { background: #ffca28; color: #333; }
-  .badge.full    { background: #43a047; color: white; }
-
-  .btn-delete {
-    background: none;
-    color: #ccc;
-    font-size: 18px;
-    font-weight: 400;
-    padding: 0 6px 0 10px;
-    min-height: 42px;
-    flex-shrink: 0;
-  }
-
-  .btn-delete:active { color: #ff2845; }
-
+  /* PIN modal — 98.css window chrome */
   .pin-modal {
     position: fixed;
     inset: 0;
@@ -730,80 +766,63 @@ function rowClass(checked: number, total: number) {
 
   .pin-modal.hidden { display: none; }
 
-  .pin-card {
-    background: white;
-    border-radius: 12px;
-    padding: 24px 20px 20px;
-    width: 260px;
+  .pin-window {
+    width: 280px;
+  }
+
+  .pin-body {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
+    padding: 12px;
   }
 
   .pin-title {
-    font-size: 15px;
+    font-size: var(--font-size-base, 13px);
     font-weight: 600;
     text-align: center;
   }
 
   #pin-input {
     width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 20px;
+    padding: 4px 6px;
+    font-size: 18px;
     text-align: center;
     letter-spacing: 0.3em;
-    outline: none;
   }
 
-  #pin-input:focus { border-color: #ff2845; }
-
   .pin-error {
-    font-size: 13px;
-    color: #ff2845;
+    font-size: var(--font-size-base, 13px);
+    color: var(--blow-red, #ff2845);
     text-align: center;
-    margin-top: -4px;
   }
 
   .pin-error.hidden { display: none; }
 
   .pin-buttons {
     display: flex;
-    gap: 8px;
+    gap: 4px;
   }
 
-  .pin-buttons .btn-cancel {
+  .pin-buttons button {
     flex: 1;
-    background: #f0f0f0;
-    color: #444;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    min-height: 42px;
-    cursor: pointer;
+    min-height: 28px;
   }
 
   #pin-submit {
-    flex: 1;
-    background: #ff2845;
-    color: white;
+    background: var(--blow-red, #ff2845);
+    color: var(--text-light, #ffffff);
     border: none;
-    border-radius: 8px;
-    font-size: 14px;
     font-weight: 700;
-    min-height: 42px;
-    cursor: pointer;
   }
 
-  #pin-submit:active { background: #cc1f37; }
+  #pin-submit:active { background: var(--blow-red-dark, #cc1f37); }
 
   #no-results {
     display: none;
     text-align: center;
-    padding: 48px 16px;
-    color: #999;
-    font-size: 15px;
+    padding: 32px 8px;
+    color: var(--text-muted, #808080);
+    font-size: var(--font-size-base, 13px);
   }
 </style>

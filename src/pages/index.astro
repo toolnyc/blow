@@ -3,11 +3,13 @@ import Layout from '../layouts/Layout.astro';
 import Window from '../components/Window.astro';
 import BootScreen from '../components/BootScreen.astro';
 import Taskbar from '../components/Taskbar.astro';
+import BottomNav from '../components/BottomNav.astro';
 
 const menuItems = [
   { id: 'subscribe-window', title: 'Subscribe', icon: '/icons/subscribe.svg' },
   { id: 'mixtapes-window', title: 'Mixtapes', icon: '/icons/mixtapes.svg' },
   { id: 'events-window', title: 'Events', icon: '/icons/events.svg' },
+  { id: 'login-window', title: 'Admin', icon: '/icons/events.svg' },
 ];
 ---
 
@@ -86,6 +88,35 @@ const menuItems = [
     </div>
   </Window>
 
+  <!-- Login Window -->
+  <Window
+    title="Admin Login"
+    icon="/icons/events.svg"
+    draggable
+    id="login-window"
+    initialX="calc(50vw - 160px)"
+    initialY={200}
+  >
+    <form id="login-form" class="field-row-stacked">
+      <label for="login-email">Email:</label>
+      <input type="email" id="login-email" name="email" required placeholder="you@example.com" />
+    </form>
+    <button id="login-btn">Send Magic Link</button>
+  </Window>
+
+  <!-- Login Success Dialog -->
+  <div id="login-success-dialog" class="dialog-overlay" style="display: none;">
+    <div class="window dialog">
+      <div class="title-bar">
+        <div class="title-bar-text">Check Your Email</div>
+      </div>
+      <div class="window-body dialog-body">
+        <p>Check your email for a magic link to log in.</p>
+        <button id="login-success-ok">OK</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Success Dialog -->
   <div id="success-dialog" class="dialog-overlay" style="display: none;">
     <div class="window dialog">
@@ -112,6 +143,7 @@ const menuItems = [
     </div>
   </div>
 
+  <BottomNav />
   <Taskbar menuItems={menuItems} />
 </Layout>
 
@@ -131,6 +163,10 @@ const menuItems = [
 
   #submit-btn {
     min-width: 100px;
+  }
+
+  #login-btn {
+    min-width: 140px;
   }
 
   .mixtapes-content {
@@ -548,6 +584,20 @@ const menuItems = [
     }
   }
 
+  // Hide login window by default (before checking URL params)
+  closeWindow('login-window');
+
+  // Check for ?login=1 query param to auto-open login window
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.has('login')) {
+    openWindow('login-window');
+    // Show auth error if present
+    if (urlParams.get('error') === 'auth') {
+      errorMessage.textContent = 'Login failed. Please try again.';
+      errorDialog.style.display = 'flex';
+    }
+  }
+
   // Focus subscribe window on load
   focusWindow('subscribe-window');
 
@@ -763,6 +813,52 @@ const menuItems = [
 
   // Load first track metadata (without playing)
   loadTrack(0);
+
+  // Login form logic
+  const loginEmailInput = document.getElementById('login-email') as HTMLInputElement;
+  const loginBtn = document.getElementById('login-btn') as HTMLButtonElement;
+  const loginSuccessDialog = document.getElementById('login-success-dialog') as HTMLDivElement;
+  const loginSuccessOk = document.getElementById('login-success-ok') as HTMLButtonElement;
+
+  loginBtn?.addEventListener('click', async () => {
+    const loginEmail = loginEmailInput.value.trim();
+
+    if (!loginEmail || !loginEmailInput.checkValidity()) {
+      errorMessage.textContent = 'Please enter a valid email address.';
+      errorDialog.style.display = 'flex';
+      return;
+    }
+
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Sending...';
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginEmail }),
+      });
+
+      if (response.ok) {
+        loginEmailInput.value = '';
+        loginSuccessDialog.style.display = 'flex';
+      } else {
+        const data = await response.json();
+        errorMessage.textContent = data.error || 'Something went wrong.';
+        errorDialog.style.display = 'flex';
+      }
+    } catch {
+      errorMessage.textContent = 'Network error. Please try again.';
+      errorDialog.style.display = 'flex';
+    } finally {
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Send Magic Link';
+    }
+  });
+
+  loginSuccessOk?.addEventListener('click', () => {
+    loginSuccessDialog.style.display = 'none';
+  });
 
   // Ticket purchase logic
   document.querySelectorAll('.buy-btn').forEach((btn) => {
