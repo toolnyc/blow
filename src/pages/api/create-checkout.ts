@@ -6,6 +6,41 @@ export const prerender = false;
 
 const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY);
 
+// GET — return next upcoming event and its active tiers (public)
+export const GET: APIRoute = async () => {
+  const supabase = createClient(
+    import.meta.env.SUPABASE_URL,
+    import.meta.env.SUPABASE_ANON_KEY,
+  );
+
+  const { data: event } = await supabase
+    .from('events')
+    .select('slug, name, date, venue')
+    .gte('date', new Date().toISOString().slice(0, 10))
+    .order('date', { ascending: true })
+    .limit(1)
+    .single();
+
+  if (!event) {
+    return new Response(JSON.stringify({ event: null, tiers: [] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  const { data: tiers } = await supabase
+    .from('ticket_tiers')
+    .select('name, price_cents')
+    .eq('event_slug', event.slug)
+    .eq('active', true)
+    .order('sort_order');
+
+  return new Response(JSON.stringify({ event, tiers: tiers ?? [] }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+};
+
 export const POST: APIRoute = async ({ request, url }) => {
   let tier: string;
   let quantity: number;

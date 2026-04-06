@@ -77,14 +77,11 @@ const menuItems = [
     initialX="calc(30vw)"
     initialY={340}
   >
-    <div class="events-content">
+    <div class="events-content" id="events-content">
       <p>Now Blowing</p>
       <p class="hint">Un petite soirée à NYC</p>
-      <p class="hint">May 3, 2026</p>
-      <div class="ticket-buttons">
-        <button class="buy-btn" data-tier="regular" disabled>Regular — $20</button>
-        <button class="buy-btn" data-tier="supporter" disabled>Supporter — $30</button>
-      </div>
+      <p class="hint" id="event-date">Loading...</p>
+      <div class="ticket-buttons" id="ticket-buttons"></div>
     </div>
   </Window>
 
@@ -279,10 +276,6 @@ const menuItems = [
   .buy-btn {
     min-width: 120px;
     font-weight: bold;
-  }
-
-  .buy-btn:disabled {
-    cursor: wait;
   }
 
   .dialog-overlay {
@@ -899,39 +892,78 @@ const menuItems = [
     loginSuccessDialog.style.display = 'none';
   });
 
-  // Ticket purchase logic
-  document.querySelectorAll('.buy-btn').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      const button = btn as HTMLButtonElement;
-      const tier = button.dataset.tier;
-      if (!tier) return;
+  // Load next event and tiers dynamically
+  let currentEventSlug = '';
 
-      button.disabled = true;
-      button.textContent = 'Loading...';
+  async function loadEvent() {
+    const dateEl = document.getElementById('event-date')!;
+    const buttonsEl = document.getElementById('ticket-buttons')!;
 
-      try {
-        const response = await fetch('/api/create-checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tier }),
-        });
+    try {
+      const res = await fetch('/api/create-checkout');
+      const { event, tiers } = await res.json();
 
-        const data = await response.json();
+      if (!event) {
+        dateEl.textContent = 'No upcoming events';
+        return;
+      }
 
-        if (response.ok && data.url) {
-          window.location.href = data.url;
-        } else {
-          errorMessage.textContent = data.error || 'Could not start checkout.';
-          errorDialog.style.display = 'flex';
-          button.disabled = false;
-          button.textContent = tier === 'regular' ? 'Regular — $20' : 'Supporter — $30';
-        }
-      } catch {
-        errorMessage.textContent = 'Network error. Please try again.';
+      currentEventSlug = event.slug;
+      const d = new Date(event.date + 'T00:00:00');
+      dateEl.textContent = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+      if (tiers.length === 0) {
+        buttonsEl.innerHTML = '<p class="hint">Tickets coming soon</p>';
+        return;
+      }
+
+      buttonsEl.innerHTML = '';
+      for (const tier of tiers) {
+        const btn = document.createElement('button');
+        btn.className = 'buy-btn';
+        btn.dataset.tier = tier.name;
+        const dollars = (tier.price_cents / 100).toFixed(0);
+        btn.textContent = `${tier.name} — $${dollars}`;
+        btn.addEventListener('click', () => handleCheckout(btn));
+        buttonsEl.appendChild(btn);
+      }
+    } catch {
+      dateEl.textContent = 'Could not load event';
+    }
+  }
+
+  async function handleCheckout(button: HTMLButtonElement) {
+    const tier = button.dataset.tier;
+    if (!tier || !currentEventSlug) return;
+
+    const label = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Loading...';
+
+    try {
+      const response = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier, event: currentEventSlug }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        errorMessage.textContent = data.error || 'Could not start checkout.';
         errorDialog.style.display = 'flex';
         button.disabled = false;
-        button.textContent = tier === 'regular' ? 'Regular — $20' : 'Supporter — $30';
+        button.textContent = label;
       }
-    });
-  });
+    } catch {
+      errorMessage.textContent = 'Network error. Please try again.';
+      errorDialog.style.display = 'flex';
+      button.disabled = false;
+      button.textContent = label;
+    }
+  }
+
+  loadEvent();
 </script>
