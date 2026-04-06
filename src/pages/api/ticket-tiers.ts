@@ -46,6 +46,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   const priceCents = typeof body.price_cents === 'number' ? body.price_cents : 0;
   const sortOrder = typeof body.sort_order === 'number' ? body.sort_order : 0;
+  const visibility = typeof body.visibility === 'string' && ['visible', 'scheduled', 'hidden'].includes(body.visibility)
+    ? body.visibility : 'visible';
+  const availableFrom = typeof body.available_from === 'string' ? body.available_from : null;
+  const availableUntil = typeof body.available_until === 'string' ? body.available_until : null;
 
   if (!eventSlug || !name || priceCents <= 0) {
     return new Response(JSON.stringify({ error: 'event_slug, name, and price_cents (> 0) are required' }), { status: 400, headers: JSON_HEADERS });
@@ -101,6 +105,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       stripe_price_id: stripePriceId || null,
       stripe_product_id: stripeProductId || null,
       sort_order: sortOrder,
+      visibility,
+      available_from: availableFrom,
+      available_until: availableUntil,
     })
     .select()
     .single();
@@ -110,6 +117,52 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   return new Response(JSON.stringify({ tier }), { status: 201, headers: JSON_HEADERS });
+};
+
+// PATCH — update tier visibility / scheduling
+export const PATCH: APIRoute = async ({ request, cookies }) => {
+  const auth = await requireAdmin(cookies);
+  if (auth.error) return auth.error;
+
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json() as Record<string, unknown>;
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400, headers: JSON_HEADERS });
+  }
+
+  const tierId = typeof body.id === 'string' ? body.id : '';
+  if (!tierId) {
+    return new Response(JSON.stringify({ error: 'Tier id is required' }), { status: 400, headers: JSON_HEADERS });
+  }
+
+  const updates: Record<string, unknown> = {};
+  if (typeof body.visibility === 'string' && ['visible', 'scheduled', 'hidden'].includes(body.visibility)) {
+    updates.visibility = body.visibility;
+  }
+  if (body.available_from !== undefined) {
+    updates.available_from = typeof body.available_from === 'string' ? body.available_from : null;
+  }
+  if (body.available_until !== undefined) {
+    updates.available_until = typeof body.available_until === 'string' ? body.available_until : null;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return new Response(JSON.stringify({ error: 'No valid fields to update' }), { status: 400, headers: JSON_HEADERS });
+  }
+
+  const { data: tier, error } = await auth.supabase
+    .from('ticket_tiers')
+    .update(updates)
+    .eq('id', tierId)
+    .select()
+    .single();
+
+  if (error) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: JSON_HEADERS });
+  }
+
+  return new Response(JSON.stringify({ tier }), { status: 200, headers: JSON_HEADERS });
 };
 
 // DELETE — deactivate a tier

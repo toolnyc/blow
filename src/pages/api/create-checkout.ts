@@ -28,14 +28,27 @@ export const GET: APIRoute = async () => {
     });
   }
 
-  const { data: tiers } = await supabase
+  const now = new Date().toISOString();
+
+  // Fetch active tiers that are either always-visible or within their scheduled window
+  const { data: allTiers } = await supabase
     .from('ticket_tiers')
-    .select('name, price_cents')
+    .select('name, price_cents, visibility, available_from, available_until')
     .eq('event_slug', event.slug)
     .eq('active', true)
+    .in('visibility', ['visible', 'scheduled'])
     .order('sort_order');
 
-  return new Response(JSON.stringify({ event, tiers: tiers ?? [] }), {
+  // Filter scheduled tiers by their time window
+  const tiers = (allTiers ?? []).filter((t) => {
+    if (t.visibility === 'visible') return true;
+    // scheduled — must be within [available_from, available_until]
+    if (t.available_from && now < t.available_from) return false;
+    if (t.available_until && now > t.available_until) return false;
+    return true;
+  }).map(({ name, price_cents }) => ({ name, price_cents }));
+
+  return new Response(JSON.stringify({ event, tiers }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
@@ -86,10 +99,11 @@ export const POST: APIRoute = async ({ request, url }) => {
 
   const { data: tierData } = await supabase
     .from('ticket_tiers')
-    .select('stripe_price_id, name, price_cents')
+    .select('stripe_price_id, name, price_cents, visibility, available_from, available_until')
     .eq('event_slug', event)
     .ilike('name', tier)
     .eq('active', true)
+    .in('visibility', ['visible', 'scheduled'])
     .single();
 
   if (!tierData?.stripe_price_id) {
@@ -97,6 +111,18 @@ export const POST: APIRoute = async ({ request, url }) => {
       status: 404,
       headers: { 'Content-Type': 'application/json' },
     });
+  }
+
+  // Enforce scheduling window on checkout too
+  if (tierData.visibility === 'scheduled') {
+    const now = new Date().toISOString();
+    if ((tierData.available_from && now < tierData.available_from) ||
+        (tierData.available_until && now > tierData.available_until)) {
+      return new Response(JSON.stringify({ error: 'This ticket tier is not currently available' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
   }
 
   try {

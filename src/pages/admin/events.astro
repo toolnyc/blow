@@ -62,7 +62,24 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
               <div class="ev-tier-add">
                 <input type="text" id="tier-name" class="ev-input ev-tier-input" placeholder="Tier name (e.g. Regular)" />
                 <input type="number" id="tier-price" class="ev-input ev-tier-input ev-tier-price" placeholder="Price ($)" min="1" step="1" />
+                <select id="tier-visibility" class="ev-input ev-tier-vis">
+                  <option value="visible">Visible</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="hidden">Hidden</option>
+                </select>
                 <button type="button" id="btn-add-tier" class="ev-btn-tier-add">+ ADD</button>
+              </div>
+              <div id="tier-schedule-fields" class="ev-tier-schedule hidden">
+                <div class="ev-field-row" style="gap: var(--sp-2)">
+                  <div class="ev-field" style="flex:1">
+                    <label class="ev-label" for="tier-from">AVAILABLE FROM</label>
+                    <input type="datetime-local" id="tier-from" class="ev-input" />
+                  </div>
+                  <div class="ev-field" style="flex:1">
+                    <label class="ev-label" for="tier-until">AVAILABLE UNTIL</label>
+                    <input type="datetime-local" id="tier-until" class="ev-input" />
+                  </div>
+                </div>
               </div>
               <span class="ev-hint">Each tier creates a Stripe product automatically. Prices in USD.</span>
             </div>
@@ -933,6 +950,41 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     color: var(--text-secondary);
   }
 
+  .ev-tier-item-status.scheduled {
+    color: var(--warning, #facc15);
+  }
+
+  .ev-tier-item-status.tier-hidden {
+    color: var(--text-secondary);
+    opacity: 0.5;
+  }
+
+  .ev-tier-schedule-label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  .ev-tier-vis-select {
+    background: var(--surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border-visible);
+    border-radius: var(--radius-sm);
+    font-size: 10px;
+    font-family: var(--font-mono);
+    padding: var(--sp-1) var(--sp-2);
+    cursor: pointer;
+  }
+
+  .ev-tier-vis {
+    max-width: 120px;
+  }
+
+  .ev-tier-schedule {
+    margin-top: var(--sp-2);
+    margin-bottom: var(--sp-2);
+  }
+
   .ev-tier-remove {
     background: none;
     border: none;
@@ -1529,7 +1581,16 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   const tiersList = document.getElementById('tiers-list') as HTMLDivElement;
   const tierNameInput = document.getElementById('tier-name') as HTMLInputElement;
   const tierPriceInput = document.getElementById('tier-price') as HTMLInputElement;
+  const tierVisSelect = document.getElementById('tier-visibility') as HTMLSelectElement;
+  const tierScheduleFields = document.getElementById('tier-schedule-fields') as HTMLDivElement;
+  const tierFromInput = document.getElementById('tier-from') as HTMLInputElement;
+  const tierUntilInput = document.getElementById('tier-until') as HTMLInputElement;
   const btnAddTier = document.getElementById('btn-add-tier') as HTMLButtonElement;
+
+  // Toggle schedule fields when visibility changes
+  tierVisSelect.addEventListener('change', () => {
+    tierScheduleFields.classList.toggle('hidden', tierVisSelect.value !== 'scheduled');
+  });
 
   let managedEvents: ManagedEvent[] = [];
 
@@ -1539,6 +1600,9 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     price_cents: number;
     stripe_price_id?: string;
     active?: boolean;
+    visibility?: string;
+    available_from?: string | null;
+    available_until?: string | null;
   }
 
   let pendingTiers: TierItem[] = [];
@@ -1552,12 +1616,53 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
     if (!name || isNaN(priceDollars) || priceDollars <= 0) return;
 
-    pendingTiers.push({ name, price_cents: Math.round(priceDollars * 100) });
+    const vis = tierVisSelect.value;
+    const item: TierItem = { name, price_cents: Math.round(priceDollars * 100), visibility: vis };
+    if (vis === 'scheduled') {
+      if (tierFromInput.value) item.available_from = new Date(tierFromInput.value).toISOString();
+      if (tierUntilInput.value) item.available_until = new Date(tierUntilInput.value).toISOString();
+    }
+    pendingTiers.push(item);
     tierNameInput.value = '';
     tierPriceInput.value = '';
+    tierVisSelect.value = 'visible';
+    tierFromInput.value = '';
+    tierUntilInput.value = '';
+    tierScheduleFields.classList.add('hidden');
     tierNameInput.focus();
     renderTiers();
   });
+
+  const VIS_LABELS: Record<string, string> = { visible: 'VISIBLE', scheduled: 'SCHEDULED', hidden: 'HIDDEN' };
+  const VIS_CLASSES: Record<string, string> = { visible: '', scheduled: 'scheduled', hidden: 'tier-hidden' };
+
+  function formatSchedule(t: TierItem): string {
+    if (t.visibility !== 'scheduled') return '';
+    const parts: string[] = [];
+    if (t.available_from) parts.push(`from ${new Date(t.available_from).toLocaleString()}`);
+    if (t.available_until) parts.push(`until ${new Date(t.available_until).toLocaleString()}`);
+    return parts.length ? parts.join(' ') : '';
+  }
+
+  async function updateTierVisibility(tierId: string, visibility: string, availableFrom?: string | null, availableUntil?: string | null) {
+    const payload: Record<string, unknown> = { id: tierId, visibility };
+    if (availableFrom !== undefined) payload.available_from = availableFrom;
+    if (availableUntil !== undefined) payload.available_until = availableUntil;
+    try {
+      const res = await fetch('/api/ticket-tiers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Update local state
+        const idx = savedTiers.findIndex(t => t.id === tierId);
+        if (idx >= 0 && data.tier) savedTiers[idx] = data.tier;
+        renderTiers();
+      }
+    } catch { /* ignore */ }
+  }
 
   function renderTiers() {
     tiersList.innerHTML = '';
@@ -1566,15 +1671,41 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     for (let i = 0; i < allTiers.length; i++) {
       const t = allTiers[i];
       const isSaved = !!t.id;
+      const vis = t.visibility ?? 'visible';
+      const schedule = formatSchedule(t);
       const div = document.createElement('div');
       div.className = 'ev-tier-item';
       div.innerHTML = `
         <span class="ev-tier-item-name">${escManage(t.name)}</span>
         <span class="ev-tier-item-price">$${(t.price_cents / 100).toFixed(0)}</span>
-        <span class="ev-tier-item-status ${isSaved ? '' : 'pending'}">${isSaved ? 'LIVE' : 'PENDING'}</span>
+        <span class="ev-tier-item-status ${isSaved ? VIS_CLASSES[vis] ?? '' : 'pending'}">${isSaved ? VIS_LABELS[vis] ?? vis.toUpperCase() : 'PENDING'}</span>
+        ${schedule ? `<span class="ev-tier-schedule-label">${escManage(schedule)}</span>` : ''}
       `;
 
-      if (!isSaved) {
+      if (isSaved) {
+        // Visibility dropdown for saved tiers
+        const select = document.createElement('select');
+        select.className = 'ev-tier-vis-select';
+        select.innerHTML = `
+          <option value="visible"${vis === 'visible' ? ' selected' : ''}>Visible</option>
+          <option value="scheduled"${vis === 'scheduled' ? ' selected' : ''}>Scheduled</option>
+          <option value="hidden"${vis === 'hidden' ? ' selected' : ''}>Hidden</option>
+        `;
+        select.addEventListener('change', () => {
+          const newVis = select.value;
+          if (newVis === 'scheduled') {
+            // Prompt for dates
+            const from = prompt('Available from (YYYY-MM-DD HH:MM) or leave blank:', t.available_from ? new Date(t.available_from).toLocaleString() : '');
+            const until = prompt('Available until (YYYY-MM-DD HH:MM) or leave blank:', t.available_until ? new Date(t.available_until).toLocaleString() : '');
+            updateTierVisibility(t.id!, newVis,
+              from ? new Date(from).toISOString() : null,
+              until ? new Date(until).toISOString() : null);
+          } else {
+            updateTierVisibility(t.id!, newVis, null, null);
+          }
+        });
+        div.appendChild(select);
+      } else {
         const removeBtn = document.createElement('button');
         removeBtn.className = 'ev-tier-remove';
         removeBtn.type = 'button';
@@ -1712,6 +1843,9 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
                 name: t.name,
                 price_cents: t.price_cents,
                 sort_order: savedTiers.length + i,
+                visibility: t.visibility ?? 'visible',
+                available_from: t.available_from ?? null,
+                available_until: t.available_until ?? null,
               }),
             });
             if (!tierRes.ok) tierErrors++;
