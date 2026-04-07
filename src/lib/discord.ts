@@ -170,6 +170,29 @@ export function notifySalesAlert(data: {
   }]);
 }
 
+export function notifyCampaignSend(data: {
+  subject: string;
+  recipientCount: number;
+  status: 'sent' | 'scheduled' | 'failed';
+  error?: string;
+}): Promise<void> {
+  const isFail = data.status === 'failed';
+  const fields: DiscordEmbedField[] = [
+    { name: 'Subject', value: data.subject },
+    { name: 'Recipients', value: String(data.recipientCount), inline: true },
+    { name: 'Status', value: data.status, inline: true },
+  ];
+  if (data.error) {
+    fields.push({ name: 'Error', value: data.error.slice(0, 1024) });
+  }
+  return sendWebhook([{
+    title: isFail ? '🔴 Campaign Failed' : '📨 Campaign Sent',
+    color: isFail ? COLORS.error : COLORS.signup,
+    fields,
+    timestamp: new Date().toISOString(),
+  }]);
+}
+
 export function notifyError(data: {
   endpoint: string;
   message: string;

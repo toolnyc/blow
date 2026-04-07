@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { Resend } from 'resend';
 import { requireAdmin } from '../../lib/auth';
+import { notifyCampaignSend } from '../../lib/discord';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const prerender = false;
@@ -334,16 +335,20 @@ async function handleSend(supabase: SupabaseClient, body: Record<string, unknown
       totalSent += chunk.length;
     }
 
+    const finalStatus = scheduledAt ? 'scheduled' : 'sent';
+
     await supabase
       .from('email_campaigns')
       .update({
-        status: scheduledAt ? 'scheduled' : 'sent',
+        status: finalStatus,
         sent_count: totalSent,
         resend_batch_id: lastBatchId,
       })
       .eq('id', id);
 
-    return new Response(JSON.stringify({ success: true, sent_count: totalSent, status: scheduledAt ? 'scheduled' : 'sent' }), {
+    void notifyCampaignSend({ subject: campaign.subject, recipientCount: totalSent, status: finalStatus });
+
+    return new Response(JSON.stringify({ success: true, sent_count: totalSent, status: finalStatus }), {
       status: 200, headers: JSON_HEADERS,
     });
   } catch (err) {
@@ -353,6 +358,8 @@ async function handleSend(supabase: SupabaseClient, body: Record<string, unknown
       .from('email_campaigns')
       .update({ status: 'failed' })
       .eq('id', id);
+
+    void notifyCampaignSend({ subject: campaign.subject, recipientCount: 0, status: 'failed', error: String(err) });
 
     return new Response(JSON.stringify({ error: `Send failed: ${String(err)}` }), { status: 500, headers: JSON_HEADERS });
   }
