@@ -2,10 +2,13 @@ import type { APIRoute } from 'astro';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 import { notifyError } from '../../lib/discord';
+import { requireEnv } from '../../lib/env';
 
 export const prerender = false;
 
-const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY);
+function getStripe() {
+  return new Stripe(requireEnv('STRIPE_SECRET_KEY'));
+}
 
 // GET — return next upcoming event and its active tiers (public)
 export const GET: APIRoute = async () => {
@@ -59,11 +62,13 @@ export const POST: APIRoute = async ({ request, url }) => {
   let tier: string;
   let quantity: number;
   let event: string;
+  let accessCode: string | undefined;
   try {
     const body = await request.json();
     tier = body.tier;
     quantity = body.quantity ?? 1;
     event = body.event ?? '';
+    accessCode = typeof body.access_code === 'string' ? body.access_code.trim().toUpperCase() : undefined;
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
       status: 400,
@@ -98,14 +103,57 @@ export const POST: APIRoute = async ({ request, url }) => {
     import.meta.env.SUPABASE_ANON_KEY,
   );
 
-  const { data: tierData } = await supabase
+  // If access code provided, validate it and allow hidden tiers
+  let validatedCodeId: string | undefined;
+  let allowedTierNames: string[] | undefined;
+
+  if (accessCode) {
+    const { data: codeData } = await supabase
+      .from('access_codes')
+      .select('id, tier_names, max_uses, used_count, expires_at')
+      .eq('event_slug', event)
+      .eq('code', accessCode)
+      .eq('active', true)
+      .single();
+
+    if (!codeData) {
+      return new Response(JSON.stringify({ error: 'Invalid access code' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (codeData.expires_at && new Date(codeData.expires_at) < new Date()) {
+      return new Response(JSON.stringify({ error: 'This access code has expired' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (codeData.max_uses !== null && codeData.used_count >= codeData.max_uses) {
+      return new Response(JSON.stringify({ error: 'This access code has reached its usage limit' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    validatedCodeId = codeData.id;
+    allowedTierNames = codeData.tier_names;
+  }
+
+  // Build tier query — with access code, skip visibility filter
+  let tierQuery = supabase
     .from('ticket_tiers')
     .select('stripe_price_id, name, price_cents, visibility, available_from, available_until')
     .eq('event_slug', event)
     .ilike('name', tier)
-    .eq('active', true)
-    .in('visibility', ['visible', 'scheduled'])
-    .single();
+    .eq('active', true);
+
+  if (!accessCode) {
+    tierQuery = tierQuery.in('visibility', ['visible', 'scheduled']);
+  }
+
+  const { data: tierData } = await tierQuery.single();
 
   if (!tierData?.stripe_price_id) {
     return new Response(JSON.stringify({ error: `No active tier "${tier}" found for event "${event}"` }), {
@@ -114,8 +162,19 @@ export const POST: APIRoute = async ({ request, url }) => {
     });
   }
 
-  // Enforce scheduling window on checkout too
-  if (tierData.visibility === 'scheduled') {
+  // If using access code, verify the tier is in the allowed list
+  if (allowedTierNames) {
+    const tierAllowed = allowedTierNames.some((n) => n.toLowerCase() === tierData.name.toLowerCase());
+    if (!tierAllowed) {
+      return new Response(JSON.stringify({ error: 'This access code does not grant access to this tier' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+  }
+
+  // Enforce scheduling window for non-access-code purchases
+  if (!accessCode && tierData.visibility === 'scheduled') {
     const now = new Date().toISOString();
     if ((tierData.available_from && now < tierData.available_from) ||
         (tierData.available_until && now > tierData.available_until)) {
@@ -126,14 +185,32 @@ export const POST: APIRoute = async ({ request, url }) => {
     }
   }
 
+  // Increment used_count if using access code
+  if (validatedCodeId) {
+    const { data: current } = await supabase
+      .from('access_codes')
+      .select('used_count')
+      .eq('id', validatedCodeId)
+      .single();
+
+    await supabase
+      .from('access_codes')
+      .update({ used_count: (current?.used_count ?? 0) + 1 })
+      .eq('id', validatedCodeId);
+  }
+
   try {
     const origin = `${url.protocol}//${url.host}`;
-    const session = await stripe.checkout.sessions.create({
+    const cancelUrl = accessCode
+      ? `${origin}/early-access?code=${encodeURIComponent(accessCode)}`
+      : `${origin}/`;
+
+    const session = await getStripe().checkout.sessions.create({
       line_items: [{ price: tierData.stripe_price_id, quantity }],
       mode: 'payment',
       success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/`,
-      metadata: { event, tier: tierData.name },
+      cancel_url: cancelUrl,
+      metadata: { event, tier: tierData.name, ...(accessCode ? { access_code: accessCode } : {}) },
     });
 
     return new Response(JSON.stringify({ url: session.url }), {

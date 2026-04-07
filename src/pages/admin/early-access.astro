@@ -1,0 +1,1024 @@
+---
+export const prerender = false;
+
+import AdminLayout from '../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Early Access — Blow Admin">
+  <div class="ac-root">
+    <!-- Tab switcher -->
+    <div class="ac-tabs">
+      <button class="ac-tab active" data-tab="codes">Access Codes</button>
+      <button class="ac-tab" data-tab="campaigns">Email Campaigns</button>
+    </div>
+
+    <!-- ═══ ACCESS CODES TAB ═══ -->
+    <div id="tab-codes" class="ac-tab-content">
+      <div class="ac-header">
+        <h1 class="ac-title">Access Codes</h1>
+        <button id="btn-new-code" class="ac-btn-primary">+ NEW CODE</button>
+      </div>
+
+      <!-- Code form (hidden by default) -->
+      <div id="code-form-wrap" class="ac-panel hidden">
+        <div class="ac-panel-header">
+          <h2 class="ac-panel-title">New Access Code</h2>
+          <button id="btn-cancel-code" class="ac-btn-cancel">CANCEL</button>
+        </div>
+        <form id="code-form" class="ac-form" autocomplete="off">
+          <div class="ac-field">
+            <label class="ac-label" for="code-event">EVENT</label>
+            <select id="code-event" class="ac-input ac-select" required>
+              <option value="">Select event...</option>
+            </select>
+          </div>
+          <div class="ac-field-row">
+            <div class="ac-field" style="flex:1">
+              <label class="ac-label" for="code-value">CODE</label>
+              <input type="text" id="code-value" class="ac-input" placeholder="e.g. EARLYBLOW" />
+            </div>
+            <button type="button" id="btn-generate-code" class="ac-btn-secondary">GENERATE</button>
+          </div>
+          <span class="ac-hint">Leave blank to auto-generate. Codes are case-insensitive.</span>
+          <div class="ac-field">
+            <label class="ac-label">TIERS TO UNLOCK</label>
+            <div id="code-tiers" class="ac-tier-checks">
+              <span class="ac-hint">Select an event first</span>
+            </div>
+          </div>
+          <div class="ac-field-row">
+            <div class="ac-field" style="flex:1">
+              <label class="ac-label" for="code-max-uses">MAX USES</label>
+              <input type="number" id="code-max-uses" class="ac-input" placeholder="Unlimited" min="1" />
+            </div>
+            <div class="ac-field" style="flex:1">
+              <label class="ac-label" for="code-expires">EXPIRES</label>
+              <input type="datetime-local" id="code-expires" class="ac-input" />
+            </div>
+          </div>
+          <div class="ac-form-actions">
+            <button type="submit" class="ac-btn-primary">CREATE CODE</button>
+            <span id="code-feedback" class="ac-feedback"></span>
+          </div>
+        </form>
+      </div>
+
+      <!-- Code list -->
+      <div id="codes-loading" class="ac-loading">
+        <div class="ac-loading-text">Loading codes...</div>
+      </div>
+      <div id="codes-empty" class="ac-empty hidden">
+        <p>No access codes yet. Tap "+ NEW CODE" to create one.</p>
+      </div>
+      <div id="codes-table-wrap" class="hidden">
+        <table class="ac-table">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Event</th>
+              <th>Tiers</th>
+              <th class="num">Uses</th>
+              <th>Expires</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="codes-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══ EMAIL CAMPAIGNS TAB ═══ -->
+    <div id="tab-campaigns" class="ac-tab-content hidden">
+      <div class="ac-header">
+        <h1 class="ac-title">Email Campaigns</h1>
+      </div>
+
+      <!-- Compose form -->
+      <div class="ac-panel">
+        <div class="ac-panel-header">
+          <h2 class="ac-panel-title">Compose</h2>
+        </div>
+        <form id="campaign-form" class="ac-form" autocomplete="off">
+          <div class="ac-field">
+            <label class="ac-label" for="cm-subject">SUBJECT</label>
+            <input type="text" id="cm-subject" class="ac-input" placeholder="e.g. Early access is live" required />
+          </div>
+
+          <!-- Audience builder -->
+          <div class="ac-field">
+            <label class="ac-label">AUDIENCE</label>
+            <div class="ac-audience-builder">
+              <div class="ac-radio-group">
+                <label class="ac-radio-label">
+                  <input type="radio" name="audience-type" value="all" checked class="ac-radio" />
+                  All Subscribers
+                </label>
+                <label class="ac-radio-label">
+                  <input type="radio" name="audience-type" value="event" class="ac-radio" />
+                  Event Attendees
+                </label>
+              </div>
+              <div id="cm-event-filters" class="ac-event-filters hidden">
+                <div class="ac-field-row" style="gap: var(--sp-2)">
+                  <div class="ac-field" style="flex:1">
+                    <label class="ac-label" for="cm-event">EVENT</label>
+                    <select id="cm-event" class="ac-input ac-select">
+                      <option value="">Select event...</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="ac-field">
+                  <label class="ac-label">TICKET TYPES</label>
+                  <div class="ac-check-group">
+                    <label class="ac-check-label"><input type="checkbox" value="regular" class="ac-check cm-ticket-type" /> Regular</label>
+                    <label class="ac-check-label"><input type="checkbox" value="supporter" class="ac-check cm-ticket-type" /> Supporter</label>
+                  </div>
+                </div>
+              </div>
+              <div class="ac-audience-count">
+                Recipients: <strong id="cm-audience-count">--</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="ac-field">
+            <label class="ac-label" for="cm-body">MESSAGE BODY</label>
+            <textarea id="cm-body" class="ac-input ac-textarea" rows="8" placeholder="Your message HTML... (wrapped in Blow email template)" required></textarea>
+            <span class="ac-hint">HTML is wrapped in the Blow branded email template with wordmark header and XOXO footer.</span>
+          </div>
+
+          <!-- Schedule -->
+          <div class="ac-field">
+            <label class="ac-label">TIMING</label>
+            <div class="ac-radio-group">
+              <label class="ac-radio-label">
+                <input type="radio" name="timing" value="now" checked class="ac-radio" />
+                Send Now
+              </label>
+              <label class="ac-radio-label">
+                <input type="radio" name="timing" value="schedule" class="ac-radio" />
+                Schedule
+              </label>
+            </div>
+            <div id="cm-schedule-field" class="hidden" style="margin-top: var(--sp-2)">
+              <input type="datetime-local" id="cm-schedule-at" class="ac-input" />
+            </div>
+          </div>
+
+          <div class="ac-form-actions">
+            <button type="button" id="btn-save-draft" class="ac-btn-secondary">SAVE DRAFT</button>
+            <button type="button" id="btn-test-send" class="ac-btn-secondary">TEST SEND</button>
+            <button type="button" id="btn-send-campaign" class="ac-btn-primary">SEND</button>
+            <span id="cm-feedback" class="ac-feedback"></span>
+          </div>
+        </form>
+      </div>
+
+      <!-- Campaign history -->
+      <div class="ac-panel" style="margin-top: var(--sp-4)">
+        <div class="ac-panel-header">
+          <h2 class="ac-panel-title">Campaign History</h2>
+        </div>
+        <div id="campaigns-loading" class="ac-loading">
+          <div class="ac-loading-text">Loading campaigns...</div>
+        </div>
+        <div id="campaigns-empty" class="ac-empty hidden">
+          <p>No campaigns yet.</p>
+        </div>
+        <div id="campaigns-table-wrap" class="hidden">
+          <table class="ac-table">
+            <thead>
+              <tr>
+                <th>Subject</th>
+                <th>Audience</th>
+                <th class="num">Sent</th>
+                <th>Status</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody id="campaigns-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
+
+<style is:global>
+  .ac-root {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: var(--sp-4) var(--sp-3);
+  }
+
+  /* Tabs */
+  .ac-tabs {
+    display: flex;
+    gap: var(--sp-1);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: var(--sp-4);
+  }
+  .ac-tab {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: var(--sp-2) var(--sp-3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .ac-tab:hover { color: var(--text-primary); }
+  .ac-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* Header */
+  .ac-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--sp-4);
+  }
+  .ac-title {
+    font-family: var(--font-heading);
+    font-size: 24px;
+    font-weight: 400;
+    color: var(--text-display);
+    margin: 0;
+  }
+
+  /* Panels */
+  .ac-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-4);
+    margin-bottom: var(--sp-4);
+  }
+  .ac-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--sp-3);
+  }
+  .ac-panel-title {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+    margin: 0;
+    font-weight: 400;
+  }
+
+  /* Form elements */
+  .ac-form { display: flex; flex-direction: column; gap: var(--sp-3); }
+  .ac-field { display: flex; flex-direction: column; gap: var(--sp-1); }
+  .ac-field-row { display: flex; gap: var(--sp-3); align-items: flex-end; }
+  .ac-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+  }
+  .ac-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 15px;
+    padding: var(--sp-2) 0;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+  .ac-input:focus { border-bottom-color: var(--text-display); }
+  .ac-input::placeholder {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    opacity: 0.5;
+  }
+  .ac-select {
+    appearance: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 4px center;
+    padding-right: 24px;
+  }
+  .ac-textarea {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: var(--sp-2);
+    resize: vertical;
+    min-height: 120px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+  .ac-hint {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+    opacity: 0.6;
+  }
+  .ac-feedback {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--accent);
+  }
+
+  /* Buttons */
+  .ac-btn-primary {
+    background: var(--accent);
+    color: var(--black);
+    border: none;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: var(--sp-2) var(--sp-4);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    font-weight: 700;
+    transition: opacity 0.15s;
+  }
+  .ac-btn-primary:hover { opacity: 0.85; }
+  .ac-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .ac-btn-secondary {
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: var(--sp-2) var(--sp-3);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .ac-btn-secondary:hover { border-color: var(--text-primary); }
+  .ac-btn-cancel {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+  }
+  .ac-btn-cancel:hover { color: var(--text-primary); }
+
+  /* Tier checkboxes */
+  .ac-tier-checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+  }
+
+  /* Radio and check groups */
+  .ac-radio-group, .ac-check-group {
+    display: flex;
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+  }
+  .ac-radio-label, .ac-check-label {
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1);
+    cursor: pointer;
+  }
+  .ac-radio, .ac-check { accent-color: var(--accent); }
+
+  /* Audience builder */
+  .ac-audience-builder { display: flex; flex-direction: column; gap: var(--sp-2); }
+  .ac-event-filters { padding-left: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); }
+  .ac-audience-count {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-secondary);
+    padding: var(--sp-1) 0;
+  }
+  .ac-audience-count strong { color: var(--text-display); }
+
+  /* Tables */
+  .ac-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .ac-table th {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+    text-align: left;
+    padding: var(--sp-2) var(--sp-2);
+    border-bottom: 1px solid var(--border);
+    font-weight: 400;
+  }
+  .ac-table td {
+    font-size: 14px;
+    color: var(--text-primary);
+    padding: var(--sp-2) var(--sp-2);
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .ac-table tr:hover td { background: var(--surface-raised); }
+  .ac-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* Status chips */
+  .ac-chip {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border);
+  }
+  .ac-chip-active { color: #2ecc71; border-color: #2ecc71; }
+  .ac-chip-expired { color: var(--text-secondary); border-color: var(--border); }
+  .ac-chip-maxed { color: #f39c12; border-color: #f39c12; }
+  .ac-chip-inactive { color: var(--text-secondary); border-color: var(--border); opacity: 0.5; }
+  .ac-chip-draft { color: var(--text-secondary); border-color: var(--border); }
+  .ac-chip-scheduled { color: #3498db; border-color: #3498db; }
+  .ac-chip-sent { color: #2ecc71; border-color: #2ecc71; }
+  .ac-chip-failed { color: #e74c3c; border-color: #e74c3c; }
+
+  /* Action buttons in table */
+  .ac-action-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    margin-right: 4px;
+  }
+  .ac-action-btn:hover { color: var(--text-primary); border-color: var(--text-primary); }
+  .ac-copy-btn:hover { color: #2ecc71; border-color: #2ecc71; }
+
+  /* Loading and empty states */
+  .ac-loading { padding: var(--sp-6) 0; text-align: center; }
+  .ac-loading-text {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .ac-empty {
+    padding: var(--sp-6) 0;
+    text-align: center;
+    font-family: var(--font-body);
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+
+  /* Form actions */
+  .ac-form-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
+  }
+
+  .hidden { display: none !important; }
+
+  @media (max-width: 600px) {
+    .ac-field-row { flex-direction: column; gap: var(--sp-2); }
+    .ac-table { font-size: 12px; }
+    .ac-table th, .ac-table td { padding: var(--sp-1); }
+  }
+</style>
+
+<script>
+  // ─── Helpers ───
+  function esc(s: string): string {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function formatDate(iso: string): string {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function formatDateTime(iso: string): string {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
+
+  async function api<T>(url: string, opts?: RequestInit): Promise<T> {
+    const res = await fetch(url, opts);
+    return res.json() as Promise<T>;
+  }
+
+  // ─── State ───
+  interface AccessCode {
+    id: string;
+    event_slug: string;
+    code: string;
+    tier_names: string[];
+    max_uses: number | null;
+    used_count: number;
+    expires_at: string | null;
+    active: boolean;
+    created_at: string;
+  }
+
+  interface Campaign {
+    id: string;
+    subject: string;
+    html_body: string;
+    audience_segment: Record<string, unknown>;
+    scheduled_at: string | null;
+    status: string;
+    sent_count: number;
+    created_at: string;
+  }
+
+  interface EventInfo {
+    slug: string;
+    name: string;
+    date: string;
+  }
+
+  interface TierInfo {
+    name: string;
+    price_cents: number;
+    active: boolean;
+  }
+
+  let events: EventInfo[] = [];
+  let codes: AccessCode[] = [];
+  let campaigns: Campaign[] = [];
+  let audienceDebounce: ReturnType<typeof setTimeout> | null = null;
+
+  // ─── DOM refs ───
+  const tabBtns = document.querySelectorAll<HTMLButtonElement>('.ac-tab');
+  const tabCodes = document.getElementById('tab-codes')!;
+  const tabCampaigns = document.getElementById('tab-campaigns')!;
+
+  // Codes
+  const btnNewCode = document.getElementById('btn-new-code') as HTMLButtonElement;
+  const codeFormWrap = document.getElementById('code-form-wrap')!;
+  const btnCancelCode = document.getElementById('btn-cancel-code') as HTMLButtonElement;
+  const codeForm = document.getElementById('code-form') as HTMLFormElement;
+  const codeEvent = document.getElementById('code-event') as HTMLSelectElement;
+  const codeValue = document.getElementById('code-value') as HTMLInputElement;
+  const btnGenerate = document.getElementById('btn-generate-code') as HTMLButtonElement;
+  const codeTiers = document.getElementById('code-tiers')!;
+  const codeMaxUses = document.getElementById('code-max-uses') as HTMLInputElement;
+  const codeExpires = document.getElementById('code-expires') as HTMLInputElement;
+  const codeFeedback = document.getElementById('code-feedback')!;
+  const codesLoading = document.getElementById('codes-loading')!;
+  const codesEmpty = document.getElementById('codes-empty')!;
+  const codesTableWrap = document.getElementById('codes-table-wrap')!;
+  const codesBody = document.getElementById('codes-body')!;
+
+  // Campaigns
+  const campaignForm = document.getElementById('campaign-form') as HTMLFormElement;
+  const cmSubject = document.getElementById('cm-subject') as HTMLInputElement;
+  const cmBody = document.getElementById('cm-body') as HTMLTextAreaElement;
+  const cmEventFilters = document.getElementById('cm-event-filters')!;
+  const cmEvent = document.getElementById('cm-event') as HTMLSelectElement;
+  const cmAudienceCount = document.getElementById('cm-audience-count')!;
+  const cmScheduleField = document.getElementById('cm-schedule-field')!;
+  const cmScheduleAt = document.getElementById('cm-schedule-at') as HTMLInputElement;
+  const cmFeedback = document.getElementById('cm-feedback')!;
+  const btnSaveDraft = document.getElementById('btn-save-draft') as HTMLButtonElement;
+  const btnTestSend = document.getElementById('btn-test-send') as HTMLButtonElement;
+  const btnSendCampaign = document.getElementById('btn-send-campaign') as HTMLButtonElement;
+  const campaignsLoading = document.getElementById('campaigns-loading')!;
+  const campaignsEmpty = document.getElementById('campaigns-empty')!;
+  const campaignsTableWrap = document.getElementById('campaigns-table-wrap')!;
+  const campaignsBody = document.getElementById('campaigns-body')!;
+
+  // ─── Tab switching ───
+  tabBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.dataset.tab;
+      tabCodes.classList.toggle('hidden', tab !== 'codes');
+      tabCampaigns.classList.toggle('hidden', tab !== 'campaigns');
+    });
+  });
+
+  // ─── Load events ───
+  async function loadEvents() {
+    const data = await api<{ events: EventInfo[] }>('/api/events');
+    events = data.events ?? [];
+    const opts = events.map((e) => `<option value="${esc(e.slug)}">${esc(e.name)}</option>`).join('');
+    codeEvent.innerHTML = `<option value="">Select event...</option>${opts}`;
+    cmEvent.innerHTML = `<option value="">Select event...</option>${opts}`;
+  }
+
+  // ─── Load tiers for an event ───
+  async function loadTiersForEvent(slug: string) {
+    if (!slug) {
+      codeTiers.innerHTML = '<span class="ac-hint">Select an event first</span>';
+      return;
+    }
+    const data = await api<{ tiers: TierInfo[] }>(`/api/ticket-tiers?event=${encodeURIComponent(slug)}`);
+    const tiers = (data.tiers ?? []).filter((t) => t.active);
+    if (tiers.length === 0) {
+      codeTiers.innerHTML = '<span class="ac-hint">No active tiers for this event</span>';
+      return;
+    }
+    codeTiers.innerHTML = tiers.map((t) =>
+      `<label class="ac-check-label"><input type="checkbox" class="ac-check code-tier-check" value="${esc(t.name)}" /> ${esc(t.name)}</label>`
+    ).join('');
+  }
+
+  codeEvent.addEventListener('change', () => loadTiersForEvent(codeEvent.value));
+
+  // ─── Load codes ───
+  async function loadCodes() {
+    codesLoading.classList.remove('hidden');
+    codesEmpty.classList.add('hidden');
+    codesTableWrap.classList.add('hidden');
+
+    const data = await api<{ codes: AccessCode[] }>('/api/access-codes');
+    codes = data.codes ?? [];
+
+    codesLoading.classList.add('hidden');
+
+    if (codes.length === 0) {
+      codesEmpty.classList.remove('hidden');
+      return;
+    }
+
+    codesTableWrap.classList.remove('hidden');
+    renderCodes();
+  }
+
+  function codeStatus(c: AccessCode): { label: string; cls: string } {
+    if (!c.active) return { label: 'Inactive', cls: 'ac-chip-inactive' };
+    if (c.expires_at && new Date(c.expires_at) < new Date()) return { label: 'Expired', cls: 'ac-chip-expired' };
+    if (c.max_uses !== null && c.used_count >= c.max_uses) return { label: 'Maxed', cls: 'ac-chip-maxed' };
+    return { label: 'Active', cls: 'ac-chip-active' };
+  }
+
+  function renderCodes() {
+    codesBody.innerHTML = codes.map((c) => {
+      const s = codeStatus(c);
+      const uses = c.max_uses !== null ? `${c.used_count} / ${c.max_uses}` : String(c.used_count);
+      const url = `https://blowme.nyc/early-access?code=${encodeURIComponent(c.code)}`;
+      return `<tr>
+        <td><code style="font-family:var(--font-mono);font-size:13px">${esc(c.code)}</code></td>
+        <td>${esc(c.event_slug)}</td>
+        <td>${c.tier_names.map((n) => esc(n)).join(', ')}</td>
+        <td class="num">${uses}</td>
+        <td>${c.expires_at ? formatDateTime(c.expires_at) : '—'}</td>
+        <td><span class="ac-chip ${s.cls}">${s.label}</span></td>
+        <td>
+          <button class="ac-action-btn ac-copy-btn" data-url="${esc(url)}" title="Copy link">COPY</button>
+          <button class="ac-action-btn" data-toggle="${c.id}" data-active="${c.active}">${c.active ? 'DISABLE' : 'ENABLE'}</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ─── Code table actions ───
+  codesBody.addEventListener('click', async (e) => {
+    const btn = (e.target as HTMLElement).closest('button');
+    if (!btn) return;
+
+    if (btn.classList.contains('ac-copy-btn')) {
+      const url = btn.dataset.url ?? '';
+      await navigator.clipboard.writeText(url);
+      btn.textContent = 'COPIED';
+      setTimeout(() => { btn.textContent = 'COPY'; }, 1500);
+      return;
+    }
+
+    const toggleId = btn.dataset.toggle;
+    if (toggleId) {
+      const isActive = btn.dataset.active === 'true';
+      await api('/api/access-codes', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: toggleId, active: !isActive }),
+      });
+      await loadCodes();
+    }
+  });
+
+  // ─── New code form ───
+  btnNewCode.addEventListener('click', () => {
+    codeFormWrap.classList.remove('hidden');
+    btnNewCode.classList.add('hidden');
+  });
+
+  btnCancelCode.addEventListener('click', () => {
+    codeFormWrap.classList.add('hidden');
+    btnNewCode.classList.remove('hidden');
+    codeForm.reset();
+    codeTiers.innerHTML = '<span class="ac-hint">Select an event first</span>';
+    codeFeedback.textContent = '';
+  });
+
+  btnGenerate.addEventListener('click', () => {
+    codeValue.value = crypto.randomUUID().slice(0, 8).toUpperCase();
+  });
+
+  codeForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    codeFeedback.textContent = '';
+
+    const tierChecks = codeTiers.querySelectorAll<HTMLInputElement>('.code-tier-check:checked');
+    const tierNames = Array.from(tierChecks).map((c) => c.value);
+
+    if (tierNames.length === 0) {
+      codeFeedback.textContent = 'Select at least one tier';
+      return;
+    }
+
+    const payload: Record<string, unknown> = {
+      event_slug: codeEvent.value,
+      code: codeValue.value || undefined,
+      tier_names: tierNames,
+    };
+
+    if (codeMaxUses.value) payload.max_uses = parseInt(codeMaxUses.value, 10);
+    if (codeExpires.value) payload.expires_at = new Date(codeExpires.value).toISOString();
+
+    const res = await api<{ code?: AccessCode; error?: string }>('/api/access-codes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.error) {
+      codeFeedback.textContent = res.error;
+      return;
+    }
+
+    codeFormWrap.classList.add('hidden');
+    btnNewCode.classList.remove('hidden');
+    codeForm.reset();
+    codeTiers.innerHTML = '<span class="ac-hint">Select an event first</span>';
+    await loadCodes();
+  });
+
+  // ─── Audience controls ───
+  document.querySelectorAll<HTMLInputElement>('input[name="audience-type"]').forEach((r) => {
+    r.addEventListener('change', () => {
+      cmEventFilters.classList.toggle('hidden', r.value !== 'event');
+      updateAudienceCount();
+    });
+  });
+
+  cmEvent.addEventListener('change', () => updateAudienceCount());
+  document.querySelectorAll<HTMLInputElement>('.cm-ticket-type').forEach((c) => {
+    c.addEventListener('change', () => updateAudienceCount());
+  });
+
+  async function updateAudienceCount() {
+    if (audienceDebounce) clearTimeout(audienceDebounce);
+    audienceDebounce = setTimeout(async () => {
+      const type = (document.querySelector<HTMLInputElement>('input[name="audience-type"]:checked'))?.value;
+      const params = new URLSearchParams();
+
+      if (type === 'all') {
+        params.set('all_subscribers', '1');
+      } else if (type === 'event') {
+        if (cmEvent.value) params.set('event_slug', cmEvent.value);
+        const types = Array.from(document.querySelectorAll<HTMLInputElement>('.cm-ticket-type:checked'))
+          .map((c) => c.value);
+        if (types.length > 0) params.set('ticket_types', types.join(','));
+      }
+
+      if (!params.toString()) {
+        cmAudienceCount.textContent = '0';
+        return;
+      }
+
+      const data = await api<{ count: number }>(`/api/audience-count?${params}`);
+      cmAudienceCount.textContent = String(data.count ?? 0);
+    }, 300);
+  }
+
+  // ─── Timing controls ───
+  document.querySelectorAll<HTMLInputElement>('input[name="timing"]').forEach((r) => {
+    r.addEventListener('change', () => {
+      cmScheduleField.classList.toggle('hidden', r.value !== 'schedule');
+    });
+  });
+
+  // ─── Campaign actions ───
+  function buildSegment(): Record<string, unknown> {
+    const type = (document.querySelector<HTMLInputElement>('input[name="audience-type"]:checked'))?.value;
+    if (type === 'all') return { all_subscribers: true };
+    const segment: Record<string, unknown> = {};
+    if (cmEvent.value) segment.event_slug = cmEvent.value;
+    const types = Array.from(document.querySelectorAll<HTMLInputElement>('.cm-ticket-type:checked')).map((c) => c.value);
+    if (types.length > 0) segment.ticket_types = types;
+    return segment;
+  }
+
+  function getScheduledAt(): string | null {
+    const timing = (document.querySelector<HTMLInputElement>('input[name="timing"]:checked'))?.value;
+    if (timing === 'schedule' && cmScheduleAt.value) {
+      return new Date(cmScheduleAt.value).toISOString();
+    }
+    return null;
+  }
+
+  btnSaveDraft.addEventListener('click', async () => {
+    cmFeedback.textContent = '';
+    if (!cmSubject.value || !cmBody.value) {
+      cmFeedback.textContent = 'Subject and body are required';
+      return;
+    }
+
+    const res = await api<{ campaign?: Campaign; error?: string }>('/api/email-campaigns?action=create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject: cmSubject.value,
+        html_body: cmBody.value,
+        audience_segment: buildSegment(),
+        scheduled_at: getScheduledAt(),
+      }),
+    });
+
+    if (res.error) {
+      cmFeedback.textContent = res.error;
+      return;
+    }
+
+    cmFeedback.textContent = 'Draft saved';
+    cmFeedback.style.color = '#2ecc71';
+    await loadCampaigns();
+    setTimeout(() => { cmFeedback.textContent = ''; cmFeedback.style.color = ''; }, 2000);
+  });
+
+  btnTestSend.addEventListener('click', async () => {
+    cmFeedback.textContent = '';
+    // Save draft first, then test
+    if (!cmSubject.value || !cmBody.value) {
+      cmFeedback.textContent = 'Subject and body are required';
+      return;
+    }
+
+    cmFeedback.textContent = 'Saving draft...';
+    const draft = await api<{ campaign?: Campaign; error?: string }>('/api/email-campaigns?action=create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject: cmSubject.value,
+        html_body: cmBody.value,
+        audience_segment: buildSegment(),
+        scheduled_at: getScheduledAt(),
+      }),
+    });
+
+    if (draft.error || !draft.campaign) {
+      cmFeedback.textContent = draft.error ?? 'Failed to save draft';
+      return;
+    }
+
+    cmFeedback.textContent = 'Sending test...';
+    const res = await api<{ success?: boolean; sent_to?: string; error?: string }>('/api/email-campaigns?action=test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: draft.campaign.id }),
+    });
+
+    if (res.error) {
+      cmFeedback.textContent = `Test failed: ${res.error}`;
+      return;
+    }
+
+    cmFeedback.textContent = `Test sent to ${res.sent_to}`;
+    cmFeedback.style.color = '#2ecc71';
+    await loadCampaigns();
+    setTimeout(() => { cmFeedback.textContent = ''; cmFeedback.style.color = ''; }, 3000);
+  });
+
+  btnSendCampaign.addEventListener('click', async () => {
+    cmFeedback.textContent = '';
+
+    if (!cmSubject.value || !cmBody.value) {
+      cmFeedback.textContent = 'Subject and body are required';
+      return;
+    }
+
+    const count = cmAudienceCount.textContent;
+    if (!confirm(`Send campaign to ${count} recipients?`)) return;
+
+    cmFeedback.textContent = 'Saving draft...';
+    const draft = await api<{ campaign?: Campaign; error?: string }>('/api/email-campaigns?action=create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject: cmSubject.value,
+        html_body: cmBody.value,
+        audience_segment: buildSegment(),
+        scheduled_at: getScheduledAt(),
+      }),
+    });
+
+    if (draft.error || !draft.campaign) {
+      cmFeedback.textContent = draft.error ?? 'Failed to save draft';
+      return;
+    }
+
+    cmFeedback.textContent = 'Sending...';
+    btnSendCampaign.disabled = true;
+
+    const res = await api<{ success?: boolean; sent_count?: number; status?: string; error?: string }>('/api/email-campaigns?action=send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: draft.campaign.id }),
+    });
+
+    btnSendCampaign.disabled = false;
+
+    if (res.error) {
+      cmFeedback.textContent = `Failed: ${res.error}`;
+      return;
+    }
+
+    const statusText = res.status === 'scheduled' ? 'Scheduled' : 'Sent';
+    cmFeedback.textContent = `${statusText} to ${res.sent_count} recipients`;
+    cmFeedback.style.color = '#2ecc71';
+    campaignForm.reset();
+    cmEventFilters.classList.add('hidden');
+    cmScheduleField.classList.add('hidden');
+    cmAudienceCount.textContent = '--';
+    await loadCampaigns();
+    setTimeout(() => { cmFeedback.textContent = ''; cmFeedback.style.color = ''; }, 3000);
+  });
+
+  // ─── Load campaigns ───
+  async function loadCampaigns() {
+    campaignsLoading.classList.remove('hidden');
+    campaignsEmpty.classList.add('hidden');
+    campaignsTableWrap.classList.add('hidden');
+
+    const data = await api<{ campaigns: Campaign[] }>('/api/email-campaigns');
+    campaigns = data.campaigns ?? [];
+
+    campaignsLoading.classList.add('hidden');
+
+    if (campaigns.length === 0) {
+      campaignsEmpty.classList.remove('hidden');
+      return;
+    }
+
+    campaignsTableWrap.classList.remove('hidden');
+    renderCampaigns();
+  }
+
+  function describeSegment(seg: Record<string, unknown>): string {
+    if (seg.all_subscribers) return 'All subscribers';
+    const parts: string[] = [];
+    if (seg.event_slug) parts.push(String(seg.event_slug));
+    if (Array.isArray(seg.ticket_types)) parts.push(seg.ticket_types.join(', '));
+    return parts.join(' — ') || 'Custom';
+  }
+
+  function renderCampaigns() {
+    campaignsBody.innerHTML = campaigns.map((c) => {
+      const chipCls = `ac-chip-${c.status}`;
+      return `<tr>
+        <td>${esc(c.subject)}</td>
+        <td style="font-size:12px">${esc(describeSegment(c.audience_segment))}</td>
+        <td class="num">${c.sent_count}</td>
+        <td><span class="ac-chip ${chipCls}">${esc(c.status)}</span></td>
+        <td style="font-size:12px">${formatDate(c.created_at)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ─── Init ───
+  loadEvents();
+  loadCodes();
+  loadCampaigns();
+  updateAudienceCount();
+</script>

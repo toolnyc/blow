@@ -3,11 +3,12 @@ import Stripe from 'stripe';
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
 import { notifyPurchase, notifyError } from '../../lib/discord';
+import { requireEnv } from '../../lib/env';
 
 export const prerender = false;
 
-const stripe = new Stripe(import.meta.env.STRIPE_SECRET_KEY);
-const resend = new Resend(import.meta.env.RESEND_API_KEY);
+function getStripe() { return new Stripe(requireEnv('STRIPE_SECRET_KEY')); }
+function getResend() { return new Resend(requireEnv('RESEND_API_KEY')); }
 const supabase = createClient(
   import.meta.env.SUPABASE_URL,
   import.meta.env.SUPABASE_ANON_KEY
@@ -21,12 +22,13 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response('Missing stripe-signature header', { status: 400 });
   }
 
+  const stripe = getStripe();
   let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(
       body,
       signature,
-      import.meta.env.STRIPE_WEBHOOK_SECRET
+      requireEnv('STRIPE_WEBHOOK_SECRET')
     );
   } catch (err) {
     console.error('Webhook signature verification failed:', err);
@@ -115,6 +117,7 @@ export const POST: APIRoute = async ({ request }) => {
       }
 
       // Notify Discord of purchase (awaited but caught — Stripe gives us 10s)
+      const accessCode = session.metadata?.access_code;
       await notifyPurchase({
         email,
         guestName,
@@ -122,6 +125,7 @@ export const POST: APIRoute = async ({ request }) => {
         ticketType,
         quantity,
         amountCents,
+        ...(accessCode ? { accessCode } : {}),
       }).catch(() => {});
 
       // 3. Upsert into subscribers
@@ -140,7 +144,7 @@ export const POST: APIRoute = async ({ request }) => {
       const audienceId = import.meta.env.RESEND_AUDIENCE_ID;
       if (audienceId) {
         try {
-          await resend.contacts.create({
+          await getResend().contacts.create({
             email,
             audienceId,
             unsubscribed: false,

@@ -48,19 +48,24 @@ export function notifyPurchase(data: {
   ticketType: string;
   quantity: number;
   amountCents: number;
+  accessCode?: string;
 }): Promise<void> {
   const dollars = (data.amountCents / 100).toFixed(2);
+  const fields: DiscordEmbedField[] = [
+    { name: 'Name', value: data.guestName, inline: true },
+    { name: 'Email', value: data.email ?? 'N/A', inline: true },
+    { name: 'Event', value: data.eventSlug, inline: true },
+    { name: 'Tier', value: data.ticketType, inline: true },
+    { name: 'Qty', value: String(data.quantity), inline: true },
+    { name: 'Amount', value: `$${dollars}`, inline: true },
+  ];
+  if (data.accessCode) {
+    fields.push({ name: 'Access Code', value: data.accessCode, inline: true });
+  }
   return sendWebhook([{
-    title: '🎟️ Ticket Purchase',
+    title: data.accessCode ? '🔑 Early Access Purchase' : '🎟️ Ticket Purchase',
     color: COLORS.purchase,
-    fields: [
-      { name: 'Name', value: data.guestName, inline: true },
-      { name: 'Email', value: data.email ?? 'N/A', inline: true },
-      { name: 'Event', value: data.eventSlug, inline: true },
-      { name: 'Tier', value: data.ticketType, inline: true },
-      { name: 'Qty', value: String(data.quantity), inline: true },
-      { name: 'Amount', value: `$${dollars}`, inline: true },
-    ],
+    fields,
     timestamp: new Date().toISOString(),
   }]);
 }

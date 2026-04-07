@@ -49,6 +49,8 @@ STRIPE_SECRET_KEY       # Stripe secret key (server-side only)
 STRIPE_WEBHOOK_SECRET   # Stripe webhook signing secret
 ```
 
+**NEVER use `vercel env add` or `vercel env rm` on these keys.** A previous incident overwrote Stripe keys with empty values, silently breaking payments and tier creation. The pre-tool hook blocks this, but the rule stands: only Pete should modify production env vars, via the Vercel dashboard or `!` prefix. New env vars (like CRON_SECRET, DISCORD_WEBHOOK_URL) that don't exist yet are fine to add.
+
 ---
 
 ## Architecture

@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import Stripe from 'stripe';
 import { requireAdmin } from '../../lib/auth';
+import { requireEnv } from '../../lib/env';
 
 export const prerender = false;
 
@@ -67,32 +68,37 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 
   // Create Stripe product + price
-  let stripeProductId = '';
-  let stripePriceId = '';
+  let stripeKey: string;
+  try {
+    stripeKey = requireEnv('STRIPE_SECRET_KEY');
+  } catch {
+    return new Response(JSON.stringify({ error: 'Stripe is not configured (missing STRIPE_SECRET_KEY)' }), { status: 500, headers: JSON_HEADERS });
+  }
 
-  const stripeKey = import.meta.env.STRIPE_SECRET_KEY;
-  if (stripeKey) {
-    try {
-      const stripe = new Stripe(stripeKey);
+  let stripeProductId: string;
+  let stripePriceId: string;
 
-      const product = await stripe.products.create({
-        name: `${event.name} — ${name}`,
-        metadata: { event_slug: eventSlug, tier_name: name },
-      });
+  try {
+    const stripe = new Stripe(stripeKey);
 
-      const price = await stripe.prices.create({
-        product: product.id,
-        unit_amount: priceCents,
-        currency: 'usd',
-        metadata: { event_slug: eventSlug, tier_name: name },
-      });
+    const product = await stripe.products.create({
+      name: `${event.name} — ${name}`,
+      metadata: { event_slug: eventSlug, tier_name: name },
+    });
 
-      stripeProductId = product.id;
-      stripePriceId = price.id;
-    } catch (err) {
-      console.error('Stripe product creation error:', err);
-      return new Response(JSON.stringify({ error: 'Failed to create Stripe product/price' }), { status: 500, headers: JSON_HEADERS });
-    }
+    const price = await stripe.prices.create({
+      product: product.id,
+      unit_amount: priceCents,
+      currency: 'usd',
+      metadata: { event_slug: eventSlug, tier_name: name },
+    });
+
+    stripeProductId = product.id;
+    stripePriceId = price.id;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('Stripe product creation error:', msg);
+    return new Response(JSON.stringify({ error: `Stripe error: ${msg}` }), { status: 500, headers: JSON_HEADERS });
   }
 
   // Insert tier into DB
@@ -102,8 +108,8 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       event_slug: eventSlug,
       name,
       price_cents: priceCents,
-      stripe_price_id: stripePriceId || null,
-      stripe_product_id: stripeProductId || null,
+      stripe_price_id: stripePriceId,
+      stripe_product_id: stripeProductId,
       sort_order: sortOrder,
       visibility,
       available_from: availableFrom,

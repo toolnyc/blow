@@ -1831,7 +1831,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       // Create any pending tiers via API
       if (pendingTiers.length > 0) {
         feedback.textContent = '[CREATING TIERS...]';
-        let tierErrors = 0;
+        const tierErrors: string[] = [];
         for (let i = 0; i < pendingTiers.length; i++) {
           const t = pendingTiers[i];
           try {
@@ -1848,14 +1848,17 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
                 available_until: t.available_until ?? null,
               }),
             });
-            if (!tierRes.ok) tierErrors++;
-          } catch {
-            tierErrors++;
+            if (!tierRes.ok) {
+              const errData = await tierRes.json().catch(() => ({ error: `HTTP ${tierRes.status}` }));
+              tierErrors.push(`${t.name}: ${errData.error ?? 'Unknown error'}`);
+            }
+          } catch (err) {
+            tierErrors.push(`${t.name}: Network error`);
           }
         }
         pendingTiers = [];
-        if (tierErrors > 0) {
-          feedback.textContent = `[SAVED — ${tierErrors} tier(s) failed]`;
+        if (tierErrors.length > 0) {
+          feedback.textContent = `[TIER ERRORS: ${tierErrors.join(' | ')}]`;
           feedback.className = 'ev-feedback error';
         } else {
           feedback.textContent = '[SAVED]';
