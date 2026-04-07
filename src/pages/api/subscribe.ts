@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
+import { notifySignup, notifyError } from '../../lib/discord';
 
 export const prerender = false;
 
@@ -118,12 +119,15 @@ export const POST: APIRoute = async ({ request, url }) => {
       });
     }
 
+    void notifySignup(email);
+
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('Subscribe error:', error);
+    void notifyError({ endpoint: 'subscribe', message: String(error) });
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

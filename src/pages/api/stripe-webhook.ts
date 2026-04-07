@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import Stripe from 'stripe';
 import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
+import { notifyPurchase, notifyError } from '../../lib/discord';
 
 export const prerender = false;
 
@@ -29,6 +30,7 @@ export const POST: APIRoute = async ({ request }) => {
     );
   } catch (err) {
     console.error('Webhook signature verification failed:', err);
+    void notifyError({ endpoint: 'stripe-webhook', message: String(err), context: 'Signature verification' });
     return new Response('Invalid signature', { status: 400 });
   }
 
@@ -77,6 +79,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (orderError) {
       console.error('Webhook: failed to create order:', orderError);
+      void notifyError({ endpoint: 'stripe-webhook', message: orderError.message, context: 'Order upsert' });
     }
 
     // 2. Upsert guest record linked to event
@@ -100,6 +103,7 @@ export const POST: APIRoute = async ({ request }) => {
 
       if (guestError) {
         console.error('Webhook: failed to upsert guest:', guestError);
+        void notifyError({ endpoint: 'stripe-webhook', message: guestError.message, context: 'Guest upsert' });
       }
 
       // Link guest to order if we got a guest id
@@ -109,6 +113,16 @@ export const POST: APIRoute = async ({ request }) => {
           .update({ guest_id: guestData.id })
           .eq('stripe_session_id', session.id);
       }
+
+      // Notify Discord of purchase (awaited but caught — Stripe gives us 10s)
+      await notifyPurchase({
+        email,
+        guestName,
+        eventSlug,
+        ticketType,
+        quantity,
+        amountCents,
+      }).catch(() => {});
 
       // 3. Upsert into subscribers
       const { error: dbError } = await supabase

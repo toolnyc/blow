@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { notifyError } from '../../lib/discord';
 
 export const prerender = false;
 
@@ -141,6 +142,7 @@ export const POST: APIRoute = async ({ request, url }) => {
     });
   } catch (err) {
     console.error('Stripe checkout error:', err);
+    void notifyError({ endpoint: 'create-checkout', message: String(err), context: `Event: ${event}, Tier: ${tier}` });
     return new Response(JSON.stringify({ error: 'Failed to create checkout session' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

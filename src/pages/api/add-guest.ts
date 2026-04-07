@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
+import { notifyWalkin, notifyError } from '../../lib/discord';
 
 export const prerender = false;
 
@@ -58,11 +59,14 @@ export const POST: APIRoute = async ({ request }) => {
     .single();
 
   if (error) {
+    void notifyError({ endpoint: 'add-guest', message: error.message, context: `Event: ${event}` });
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });
   }
+
+  void notifyWalkin({ event, name: name.trim(), notes: notes?.trim() });
 
   return new Response(JSON.stringify({ success: true, guest }), {
     status: 200,

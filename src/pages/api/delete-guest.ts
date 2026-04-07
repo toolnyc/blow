@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
+import { notifyError } from '../../lib/discord';
 
 export const prerender = false;
 
@@ -26,6 +27,7 @@ export const POST: APIRoute = async ({ request }) => {
   const { error } = await supabase.from('guests').delete().eq('id', id);
 
   if (error) {
+    void notifyError({ endpoint: 'delete-guest', message: error.message, context: `Guest: ${id}` });
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },

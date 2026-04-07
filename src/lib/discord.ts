@@ -1,0 +1,115 @@
+// Discord webhook notifications — fire-and-forget, prod-only, non-blocking
+
+interface DiscordEmbedField {
+  name: string;
+  value: string;
+  inline?: boolean;
+}
+
+interface DiscordEmbed {
+  title: string;
+  description?: string;
+  color: number;
+  fields?: DiscordEmbedField[];
+  timestamp?: string;
+}
+
+const COLORS = {
+  purchase: 0x2ecc71,
+  signup: 0x3498db,
+  walkin: 0xf39c12,
+  error: 0xe74c3c,
+} as const;
+
+async function sendWebhook(embeds: DiscordEmbed[]): Promise<void> {
+  const url = import.meta.env.DISCORD_WEBHOOK_URL;
+  if (!url || !import.meta.env.PROD) return;
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ embeds }),
+    });
+    if (!res.ok) {
+      console.warn(`Discord webhook returned ${res.status}`);
+    }
+  } catch (err) {
+    console.warn('Discord webhook failed:', err);
+  }
+}
+
+export function notifyPurchase(data: {
+  email: string | null;
+  guestName: string;
+  eventSlug: string;
+  ticketType: string;
+  quantity: number;
+  amountCents: number;
+}): Promise<void> {
+  const dollars = (data.amountCents / 100).toFixed(2);
+  return sendWebhook([{
+    title: '🎟️ Ticket Purchase',
+    color: COLORS.purchase,
+    fields: [
+      { name: 'Name', value: data.guestName, inline: true },
+      { name: 'Email', value: data.email ?? 'N/A', inline: true },
+      { name: 'Event', value: data.eventSlug, inline: true },
+      { name: 'Tier', value: data.ticketType, inline: true },
+      { name: 'Qty', value: String(data.quantity), inline: true },
+      { name: 'Amount', value: `$${dollars}`, inline: true },
+    ],
+    timestamp: new Date().toISOString(),
+  }]);
+}
+
+export function notifySignup(email: string): Promise<void> {
+  return sendWebhook([{
+    title: '📬 New Subscriber',
+    color: COLORS.signup,
+    fields: [
+      { name: 'Email', value: email },
+    ],
+    timestamp: new Date().toISOString(),
+  }]);
+}
+
+export function notifyWalkin(data: {
+  event: string;
+  name: string;
+  notes?: string | null;
+}): Promise<void> {
+  const fields: DiscordEmbedField[] = [
+    { name: 'Name', value: data.name, inline: true },
+    { name: 'Event', value: data.event, inline: true },
+  ];
+  if (data.notes) {
+    fields.push({ name: 'Notes', value: data.notes });
+  }
+  return sendWebhook([{
+    title: '🚶 Walk-in Added',
+    color: COLORS.walkin,
+    fields,
+    timestamp: new Date().toISOString(),
+  }]);
+}
+
+export function notifyError(data: {
+  endpoint: string;
+  message: string;
+  context?: string;
+}): Promise<void> {
+  const fields: DiscordEmbedField[] = [
+    { name: 'Endpoint', value: data.endpoint, inline: true },
+    { name: 'Error', value: data.message.slice(0, 1024) },
+  ];
+  if (data.context) {
+    fields.push({ name: 'Context', value: data.context.slice(0, 1024) });
+  }
+  return sendWebhook([{
+    title: '🔴 API Error',
+    color: COLORS.error,
+    fields,
+    timestamp: new Date().toISOString(),
+  }]);
+}

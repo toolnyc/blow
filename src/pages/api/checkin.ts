@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
+import { notifyError } from '../../lib/discord';
 
 export const prerender = false;
 
@@ -69,6 +70,7 @@ export const POST: APIRoute = async ({ request }) => {
     .eq('id', id);
 
   if (updateError) {
+    void notifyError({ endpoint: 'checkin', message: updateError.message ?? 'Failed to update', context: `Guest: ${id}` });
     return new Response(JSON.stringify({ error: 'Failed to update' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
