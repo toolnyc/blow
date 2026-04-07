@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
+import { notifyError } from '../../../lib/discord';
 
 export const prerender = false;
 
@@ -42,6 +43,7 @@ export const GET: APIRoute = async ({ request, redirect }) => {
 
   if (error || !data.session) {
     console.error('Auth callback error:', error);
+    void notifyError({ endpoint: 'auth/callback', message: error?.message ?? 'No session returned', context: 'PKCE code exchange' });
     return redirect('/?login=1&error=auth');
   }
 
@@ -87,7 +89,8 @@ export const POST: APIRoute = async ({ request }) => {
       status: 200,
       headers,
     });
-  } catch {
+  } catch (err) {
+    void notifyError({ endpoint: 'auth/callback', message: String(err), context: 'Implicit token POST' });
     return new Response(JSON.stringify({ error: 'Invalid request' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },

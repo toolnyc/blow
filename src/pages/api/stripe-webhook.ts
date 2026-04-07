@@ -147,6 +147,7 @@ export const POST: APIRoute = async ({ request }) => {
           });
         } catch (contactError) {
           console.warn('Webhook: could not add contact to audience:', contactError);
+          void notifyError({ endpoint: 'stripe-webhook', message: String(contactError), context: 'Resend audience sync' });
         }
       }
     } else {

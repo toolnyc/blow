@@ -41,6 +41,7 @@ export const POST: APIRoute = async ({ request, url }) => {
 
     if (dbError) {
       console.error('Failed to save to database:', dbError);
+      void notifyError({ endpoint: 'subscribe', message: dbError.message, context: `DB upsert for ${email}` });
       return new Response(JSON.stringify({ error: 'Failed to save subscription' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
@@ -58,6 +59,7 @@ export const POST: APIRoute = async ({ request, url }) => {
         });
       } catch (contactError) {
         console.warn('Could not add contact to audience:', contactError);
+        void notifyError({ endpoint: 'subscribe', message: String(contactError), context: `Resend audience sync for ${email}` });
       }
     }
 
@@ -113,6 +115,7 @@ export const POST: APIRoute = async ({ request, url }) => {
 
     if (sendError) {
       console.error('Failed to send email:', sendError);
+      void notifyError({ endpoint: 'subscribe', message: sendError.message, context: `Resend email to ${email}` });
       return new Response(JSON.stringify({ error: 'Failed to send confirmation email' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },

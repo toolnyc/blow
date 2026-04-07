@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { createClient } from '@supabase/supabase-js';
 import { ADMIN_EMAILS } from '../../../lib/auth';
+import { notifyError } from '../../../lib/discord';
 
 export const prerender = false;
 
@@ -51,6 +52,7 @@ export const POST: APIRoute = async ({ request, url }) => {
 
     if (error) {
       console.error('Auth OTP error:', error.message, error.status);
+      void notifyError({ endpoint: 'auth/login', message: error.message, context: `OTP for ${email}` });
       return new Response(JSON.stringify({ error: 'Could not send login link' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' },
@@ -63,6 +65,7 @@ export const POST: APIRoute = async ({ request, url }) => {
     });
   } catch (err) {
     console.error('Login error:', err);
+    void notifyError({ endpoint: 'auth/login', message: String(err) });
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
