@@ -1,0 +1,199 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Window from '../components/Window.astro';
+import Taskbar from '../components/Taskbar.astro';
+---
+
+<Layout title="BlowNet — Early Access">
+  <Window
+    title="Early Access"
+    icon="/icons/events.svg"
+    statusText="Ready"
+    id="ea-window"
+  >
+    <img src="/wordmark.svg" alt="Blow" class="wordmark" />
+    <p id="ea-status" class="hint">Validating code...</p>
+    <div id="ea-event-info" style="display:none; text-align:center;">
+      <p id="ea-event-name" style="font-weight:bold; margin: 0;"></p>
+      <p id="ea-event-date" class="hint" style="margin: 4px 0 0 0;"></p>
+    </div>
+    <div class="ticket-buttons" id="ea-tiers"></div>
+    <p id="ea-error" style="display:none; color: #ff2845; text-align:center;"></p>
+  </Window>
+
+  <Taskbar menuItems={[{ id: 'ea-window', title: 'Early Access', icon: '/icons/events.svg' }]} />
+</Layout>
+
+<style>
+  :global(.desktop) {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 80px;
+  }
+
+  .wordmark {
+    width: 180px;
+    height: auto;
+    margin-bottom: 8px;
+  }
+
+  .hint {
+    color: #808080;
+    font-size: 12px;
+    margin: 4px 0;
+  }
+
+  .ticket-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  .buy-btn {
+    min-width: 120px;
+    font-weight: bold;
+  }
+
+  .error-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+  }
+
+  .dialog {
+    min-width: 300px;
+    max-width: 400px;
+  }
+</style>
+
+<!-- Error dialog -->
+<div id="error-dialog" class="error-overlay" style="display: none;">
+  <div class="window dialog">
+    <div class="title-bar">
+      <div class="title-bar-text">Error</div>
+      <div class="title-bar-controls">
+        <button aria-label="Close" id="error-close"></button>
+      </div>
+    </div>
+    <div class="window-body" style="padding: 16px; text-align: center;">
+      <p id="error-message">Something went wrong.</p>
+      <button id="error-ok-btn" style="margin-top: 8px;">OK</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const statusEl = document.getElementById('ea-status')!;
+  const eventInfo = document.getElementById('ea-event-info')!;
+  const eventName = document.getElementById('ea-event-name')!;
+  const eventDate = document.getElementById('ea-event-date')!;
+  const tiersEl = document.getElementById('ea-tiers')!;
+  const errorEl = document.getElementById('ea-error')!;
+  const errorDialog = document.getElementById('error-dialog')!;
+  const errorMessage = document.getElementById('error-message')!;
+  const errorClose = document.getElementById('error-close')!;
+  const errorOkBtn = document.getElementById('error-ok-btn')!;
+
+  errorClose.addEventListener('click', () => { errorDialog.style.display = 'none'; });
+  errorOkBtn.addEventListener('click', () => { errorDialog.style.display = 'none'; });
+
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+
+  let currentEventSlug = '';
+
+  async function init() {
+    if (!code) {
+      showError('No access code provided. Check your link.');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/early-access-validate?code=${encodeURIComponent(code)}`);
+      const data = await res.json();
+
+      if (!data.valid) {
+        showError(data.error || 'Invalid access code.');
+        return;
+      }
+
+      currentEventSlug = data.event.slug;
+      statusEl.style.display = 'none';
+
+      // Show event info
+      eventInfo.style.display = 'block';
+      eventName.textContent = data.event.name;
+      if (data.event.date) {
+        const d = new Date(data.event.date);
+        eventDate.textContent = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+      }
+
+      // Show tier buttons
+      if (data.tiers.length === 0) {
+        showError('No tickets available for this code.');
+        return;
+      }
+
+      tiersEl.innerHTML = '';
+      for (const tier of data.tiers) {
+        const btn = document.createElement('button');
+        btn.className = 'buy-btn';
+        btn.dataset.tier = tier.name;
+        const dollars = (tier.price_cents / 100).toFixed(0);
+        btn.textContent = `${tier.name} — $${dollars}`;
+        btn.addEventListener('click', () => handleCheckout(btn));
+        tiersEl.appendChild(btn);
+      }
+    } catch {
+      showError('Could not validate access code. Try again.');
+    }
+  }
+
+  function showError(msg: string) {
+    statusEl.style.display = 'none';
+    errorEl.style.display = 'block';
+    errorEl.textContent = msg;
+  }
+
+  async function handleCheckout(button: HTMLButtonElement) {
+    const tier = button.dataset.tier;
+    if (!tier || !currentEventSlug) return;
+
+    const label = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Loading...';
+
+    try {
+      const response = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier, event: currentEventSlug, access_code: code }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        errorMessage.textContent = data.error || 'Could not start checkout.';
+        errorDialog.style.display = 'flex';
+        button.disabled = false;
+        button.textContent = label;
+      }
+    } catch {
+      errorMessage.textContent = 'Network error. Please try again.';
+      errorDialog.style.display = 'flex';
+      button.disabled = false;
+      button.textContent = label;
+    }
+  }
+
+  init();
+</script>
