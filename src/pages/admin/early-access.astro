@@ -105,37 +105,63 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
             <input type="text" id="cm-subject" class="ac-input" placeholder="e.g. Early access is live" required />
           </div>
 
-          <!-- Audience builder -->
+          <!-- Audience segment builder -->
           <div class="ac-field">
-            <label class="ac-label">AUDIENCE</label>
-            <div class="ac-audience-builder">
-              <div class="ac-radio-group">
-                <label class="ac-radio-label">
-                  <input type="radio" name="audience-type" value="all" checked class="ac-radio" />
-                  All Subscribers
-                </label>
-                <label class="ac-radio-label">
-                  <input type="radio" name="audience-type" value="event" class="ac-radio" />
-                  Event Attendees
-                </label>
+            <label class="ac-label">AUDIENCE SEGMENTS</label>
+            <span class="ac-hint">Toggle sources to combine. All matching emails are merged.</span>
+            <div class="ac-segment-builder">
+              <!-- Source 1: Subscribers -->
+              <div class="ac-segment-card">
+                <button type="button" class="ac-segment-toggle selected" data-segment="subscribers">Subscribers</button>
+                <div class="ac-segment-options" id="seg-subscribers-opts">
+                  <div class="ac-field-row" style="gap: var(--sp-2); align-items: center">
+                    <label class="ac-label" style="white-space:nowrap; margin:0">WITHIN LAST</label>
+                    <input type="number" id="seg-sub-hours" class="ac-input" placeholder="all" min="1" style="width:70px" />
+                    <span class="ac-label" style="margin:0">HOURS</span>
+                  </div>
+                  <span class="ac-hint">Leave blank for all subscribers</span>
+                </div>
               </div>
-              <div id="cm-event-filters" class="ac-event-filters hidden">
-                <div class="ac-field-row" style="gap: var(--sp-2)">
-                  <div class="ac-field" style="flex:1">
+
+              <!-- Source 2: Ticket buyers -->
+              <div class="ac-segment-card">
+                <button type="button" class="ac-segment-toggle" data-segment="buyers">Ticket Buyers</button>
+                <div class="ac-segment-options hidden" id="seg-buyers-opts">
+                  <div class="ac-field">
                     <label class="ac-label" for="cm-event">EVENT</label>
                     <select id="cm-event" class="ac-input ac-select">
                       <option value="">Select event...</option>
                     </select>
                   </div>
-                </div>
-                <div class="ac-field">
-                  <label class="ac-label">TICKET TYPES</label>
-                  <div class="ac-check-group">
-                    <label class="ac-check-label"><input type="checkbox" value="regular" class="ac-check cm-ticket-type" /> Regular</label>
-                    <label class="ac-check-label"><input type="checkbox" value="supporter" class="ac-check cm-ticket-type" /> Supporter</label>
+                  <div class="ac-field">
+                    <label class="ac-label">TICKET TYPES</label>
+                    <div class="ac-pill-group" id="ticket-type-pills">
+                      <button type="button" class="ac-tier-pill cm-ticket-type" data-value="regular">Regular</button>
+                      <button type="button" class="ac-tier-pill cm-ticket-type" data-value="supporter">Supporter</button>
+                    </div>
+                    <span class="ac-hint">None selected = all types</span>
                   </div>
                 </div>
               </div>
+
+              <!-- Source 3: Door check-ins -->
+              <div class="ac-segment-card">
+                <button type="button" class="ac-segment-toggle" data-segment="checkins">Door Check-ins</button>
+                <div class="ac-segment-options hidden" id="seg-checkins-opts">
+                  <div class="ac-field">
+                    <label class="ac-label" for="seg-checkin-event">EVENT</label>
+                    <select id="seg-checkin-event" class="ac-input ac-select">
+                      <option value="">Select event...</option>
+                    </select>
+                  </div>
+                  <div class="ac-field">
+                    <label class="ac-label" for="seg-checkin-before">ARRIVED BEFORE</label>
+                    <input type="time" id="seg-checkin-before" class="ac-input" />
+                    <span class="ac-hint">Only people who checked in before this time. Leave blank for all check-ins.</span>
+                  </div>
+                </div>
+              </div>
+
               <div class="ac-audience-count">
                 Recipients: <strong id="cm-audience-count">--</strong>
               </div>
@@ -151,15 +177,9 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
           <!-- Schedule -->
           <div class="ac-field">
             <label class="ac-label">TIMING</label>
-            <div class="ac-radio-group">
-              <label class="ac-radio-label">
-                <input type="radio" name="timing" value="now" checked class="ac-radio" />
-                Send Now
-              </label>
-              <label class="ac-radio-label">
-                <input type="radio" name="timing" value="schedule" class="ac-radio" />
-                Schedule
-              </label>
+            <div class="ac-pill-group" id="timing-pills">
+              <button type="button" class="ac-tier-pill selected" data-value="now">Send Now</button>
+              <button type="button" class="ac-tier-pill" data-value="schedule">Schedule</button>
             </div>
             <div id="cm-schedule-field" class="hidden" style="margin-top: var(--sp-2)">
               <input type="datetime-local" id="cm-schedule-at" class="ac-input" />
@@ -168,7 +188,10 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
           <div class="ac-form-actions">
             <button type="button" id="btn-save-draft" class="ac-btn-secondary">SAVE DRAFT</button>
-            <button type="button" id="btn-test-send" class="ac-btn-secondary">TEST SEND</button>
+            <div class="ac-test-send-group">
+              <input type="email" id="cm-test-email" class="ac-input ac-test-email-input" placeholder="test@email.com" />
+              <button type="button" id="btn-test-send" class="ac-btn-secondary">TEST SEND</button>
+            </div>
             <button type="button" id="btn-send-campaign" class="ac-btn-primary">SEND</button>
             <span id="cm-feedback" class="ac-feedback"></span>
           </div>
@@ -381,33 +404,74 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   }
   .ac-btn-cancel:hover { color: var(--text-primary); }
 
-  /* Tier checkboxes */
+  /* Tier pills */
   .ac-tier-checks {
     display: flex;
     flex-wrap: wrap;
     gap: var(--sp-2);
   }
+  .ac-tier-pill {
+    background: transparent;
+    border: 1px solid var(--border-visible);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: var(--sp-1) var(--sp-3);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .ac-tier-pill:hover { border-color: var(--text-primary); color: var(--text-primary); }
+  .ac-tier-pill.selected {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--black);
+    font-weight: 700;
+  }
 
-  /* Radio and check groups */
-  .ac-radio-group, .ac-check-group {
+  /* Pill groups (radio/check replacements) */
+  .ac-pill-group {
     display: flex;
-    gap: var(--sp-3);
+    gap: var(--sp-2);
     flex-wrap: wrap;
   }
-  .ac-radio-label, .ac-check-label {
-    font-family: var(--font-body);
-    font-size: 14px;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: var(--sp-1);
-    cursor: pointer;
-  }
-  .ac-radio, .ac-check { accent-color: var(--accent); }
 
-  /* Audience builder */
-  .ac-audience-builder { display: flex; flex-direction: column; gap: var(--sp-2); }
-  .ac-event-filters { padding-left: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); }
+  /* Segment builder */
+  .ac-segment-builder { display: flex; flex-direction: column; gap: var(--sp-2); margin-top: var(--sp-1); }
+  .ac-segment-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .ac-segment-toggle {
+    display: block;
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: var(--sp-2) var(--sp-3);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+  }
+  .ac-segment-toggle:hover { color: var(--text-primary); }
+  .ac-segment-toggle.selected {
+    background: var(--accent);
+    color: var(--black);
+    font-weight: 700;
+  }
+  .ac-segment-options {
+    padding: var(--sp-2) var(--sp-3) var(--sp-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
   .ac-audience-count {
     font-family: var(--font-mono);
     font-size: 13px;
@@ -477,6 +541,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   }
   .ac-action-btn:hover { color: var(--text-primary); border-color: var(--text-primary); }
   .ac-copy-btn:hover { color: #2ecc71; border-color: #2ecc71; }
+  .ac-delete-btn:hover { color: #e74c3c; border-color: #e74c3c; }
 
   /* Loading and empty states */
   .ac-loading { padding: var(--sp-6) 0; text-align: center; }
@@ -501,6 +566,20 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     align-items: center;
     gap: var(--sp-2);
     flex-wrap: wrap;
+  }
+
+  /* Test send inline group */
+  .ac-test-send-group {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1);
+  }
+  .ac-test-email-input {
+    width: 160px;
+    font-size: 13px;
+    padding: var(--sp-1) var(--sp-2) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-pill) !important;
   }
 
   .hidden { display: none !important; }
@@ -602,12 +681,15 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   const campaignForm = document.getElementById('campaign-form') as HTMLFormElement;
   const cmSubject = document.getElementById('cm-subject') as HTMLInputElement;
   const cmBody = document.getElementById('cm-body') as HTMLTextAreaElement;
-  const cmEventFilters = document.getElementById('cm-event-filters')!;
   const cmEvent = document.getElementById('cm-event') as HTMLSelectElement;
+  const segCheckinEvent = document.getElementById('seg-checkin-event') as HTMLSelectElement;
+  const segSubHours = document.getElementById('seg-sub-hours') as HTMLInputElement;
+  const segCheckinBefore = document.getElementById('seg-checkin-before') as HTMLInputElement;
   const cmAudienceCount = document.getElementById('cm-audience-count')!;
   const cmScheduleField = document.getElementById('cm-schedule-field')!;
   const cmScheduleAt = document.getElementById('cm-schedule-at') as HTMLInputElement;
   const cmFeedback = document.getElementById('cm-feedback')!;
+  const cmTestEmail = document.getElementById('cm-test-email') as HTMLInputElement;
   const btnSaveDraft = document.getElementById('btn-save-draft') as HTMLButtonElement;
   const btnTestSend = document.getElementById('btn-test-send') as HTMLButtonElement;
   const btnSendCampaign = document.getElementById('btn-send-campaign') as HTMLButtonElement;
@@ -634,6 +716,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     const opts = events.map((e) => `<option value="${esc(e.slug)}">${esc(e.name)}</option>`).join('');
     codeEvent.innerHTML = `<option value="">Select event...</option>${opts}`;
     cmEvent.innerHTML = `<option value="">Select event...</option>${opts}`;
+    segCheckinEvent.innerHTML = `<option value="">Select event...</option>${opts}`;
   }
 
   // ─── Load tiers for an event ───
@@ -642,18 +725,33 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       codeTiers.innerHTML = '<span class="ac-hint">Select an event first</span>';
       return;
     }
-    const data = await api<{ tiers: TierInfo[] }>(`/api/ticket-tiers?event=${encodeURIComponent(slug)}`);
-    const tiers = (data.tiers ?? []).filter((t) => t.active);
-    if (tiers.length === 0) {
-      codeTiers.innerHTML = '<span class="ac-hint">No active tiers for this event</span>';
-      return;
+    codeTiers.innerHTML = '<span class="ac-hint">Loading tiers...</span>';
+    try {
+      const data = await api<{ tiers: TierInfo[]; error?: string }>(`/api/ticket-tiers?event=${encodeURIComponent(slug)}`);
+      if (data.error) {
+        codeTiers.innerHTML = `<span class="ac-hint">Error: ${esc(data.error)}</span>`;
+        return;
+      }
+      const tiers = (data.tiers ?? []).filter((t) => t.active);
+      if (tiers.length === 0) {
+        codeTiers.innerHTML = '<span class="ac-hint">No active tiers for this event</span>';
+        return;
+      }
+      codeTiers.innerHTML = tiers.map((t) =>
+        `<button type="button" class="ac-tier-pill code-tier-check" data-value="${esc(t.name)}">${esc(t.name)}</button>`
+      ).join('');
+    } catch (err) {
+      codeTiers.innerHTML = '<span class="ac-hint">Failed to load tiers</span>';
+      console.error('loadTiersForEvent error:', err);
     }
-    codeTiers.innerHTML = tiers.map((t) =>
-      `<label class="ac-check-label"><input type="checkbox" class="ac-check code-tier-check" value="${esc(t.name)}" /> ${esc(t.name)}</label>`
-    ).join('');
   }
 
   codeEvent.addEventListener('change', () => loadTiersForEvent(codeEvent.value));
+
+  codeTiers.addEventListener('click', (e) => {
+    const pill = (e.target as HTMLElement).closest('.ac-tier-pill');
+    if (pill) pill.classList.toggle('selected');
+  });
 
   // ─── Load codes ───
   async function loadCodes() {
@@ -697,6 +795,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
         <td>
           <button class="ac-action-btn ac-copy-btn" data-url="${esc(url)}" title="Copy link">COPY</button>
           <button class="ac-action-btn" data-toggle="${c.id}" data-active="${c.active}">${c.active ? 'DISABLE' : 'ENABLE'}</button>
+          <button class="ac-action-btn ac-delete-btn" data-delete="${c.id}" title="Delete code">DELETE</button>
         </td>
       </tr>`;
     }).join('');
@@ -724,6 +823,18 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
         body: JSON.stringify({ id: toggleId, active: !isActive }),
       });
       await loadCodes();
+      return;
+    }
+
+    const deleteId = btn.dataset.delete;
+    if (deleteId) {
+      if (!confirm('Delete this access code?')) return;
+      await api('/api/access-codes', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: deleteId }),
+      });
+      await loadCodes();
     }
   });
 
@@ -749,8 +860,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     e.preventDefault();
     codeFeedback.textContent = '';
 
-    const tierChecks = codeTiers.querySelectorAll<HTMLInputElement>('.code-tier-check:checked');
-    const tierNames = Array.from(tierChecks).map((c) => c.value);
+    const tierPills = codeTiers.querySelectorAll<HTMLButtonElement>('.code-tier-check.selected');
+    const tierNames = Array.from(tierPills).map((p) => p.dataset.value!).filter(Boolean);
 
     if (tierNames.length === 0) {
       codeFeedback.textContent = 'Select at least one tier';
@@ -784,32 +895,65 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     await loadCodes();
   });
 
-  // ─── Audience controls ───
-  document.querySelectorAll<HTMLInputElement>('input[name="audience-type"]').forEach((r) => {
-    r.addEventListener('change', () => {
-      cmEventFilters.classList.toggle('hidden', r.value !== 'event');
+  // ─── Segment toggle controls ───
+  const segmentToggles = document.querySelectorAll<HTMLButtonElement>('.ac-segment-toggle');
+
+  segmentToggles.forEach((toggle) => {
+    toggle.addEventListener('click', () => {
+      const isActive = toggle.classList.contains('selected');
+      toggle.classList.toggle('selected');
+      const optsId = `seg-${toggle.dataset.segment}-opts`;
+      const opts = document.getElementById(optsId);
+      if (opts) opts.classList.toggle('hidden', isActive);
       updateAudienceCount();
     });
   });
 
   cmEvent.addEventListener('change', () => updateAudienceCount());
-  document.querySelectorAll<HTMLInputElement>('.cm-ticket-type').forEach((c) => {
-    c.addEventListener('change', () => updateAudienceCount());
+  segCheckinEvent.addEventListener('change', () => updateAudienceCount());
+  segSubHours.addEventListener('input', () => updateAudienceCount());
+  segCheckinBefore.addEventListener('input', () => updateAudienceCount());
+
+  const ticketTypePills = document.getElementById('ticket-type-pills')!;
+  ticketTypePills.addEventListener('click', (e) => {
+    const pill = (e.target as HTMLElement).closest('.ac-tier-pill');
+    if (pill) {
+      pill.classList.toggle('selected');
+      updateAudienceCount();
+    }
   });
+
+  function isSegmentActive(name: string): boolean {
+    const toggle = document.querySelector<HTMLButtonElement>(`.ac-segment-toggle[data-segment="${name}"]`);
+    return toggle?.classList.contains('selected') ?? false;
+  }
 
   async function updateAudienceCount() {
     if (audienceDebounce) clearTimeout(audienceDebounce);
     audienceDebounce = setTimeout(async () => {
-      const type = (document.querySelector<HTMLInputElement>('input[name="audience-type"]:checked'))?.value;
       const params = new URLSearchParams();
 
-      if (type === 'all') {
+      if (isSegmentActive('subscribers')) {
         params.set('all_subscribers', '1');
-      } else if (type === 'event') {
-        if (cmEvent.value) params.set('event_slug', cmEvent.value);
-        const types = Array.from(document.querySelectorAll<HTMLInputElement>('.cm-ticket-type:checked'))
-          .map((c) => c.value);
+        if (segSubHours.value) params.set('subscriber_hours', segSubHours.value);
+      }
+
+      if (isSegmentActive('buyers') && cmEvent.value) {
+        params.set('event_slug', cmEvent.value);
+        const types = Array.from(ticketTypePills.querySelectorAll<HTMLElement>('.cm-ticket-type.selected'))
+          .map((p) => p.dataset.value!);
         if (types.length > 0) params.set('ticket_types', types.join(','));
+      }
+
+      if (isSegmentActive('checkins') && segCheckinEvent.value) {
+        params.set('checkin_event_slug', segCheckinEvent.value);
+        if (segCheckinBefore.value) {
+          // Convert HH:MM time to an ISO timestamp on the event date
+          // Use the event date from the events list if available, else today
+          const eventInfo = events.find((e) => e.slug === segCheckinEvent.value);
+          const dateStr = eventInfo?.date ? eventInfo.date.split('T')[0] : new Date().toISOString().split('T')[0];
+          params.set('checkin_before', `${dateStr}T${segCheckinBefore.value}:00`);
+        }
       }
 
       if (!params.toString()) {
@@ -823,25 +967,45 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   }
 
   // ─── Timing controls ───
-  document.querySelectorAll<HTMLInputElement>('input[name="timing"]').forEach((r) => {
-    r.addEventListener('change', () => {
-      cmScheduleField.classList.toggle('hidden', r.value !== 'schedule');
-    });
+  const timingPills = document.getElementById('timing-pills')!;
+  timingPills.addEventListener('click', (e) => {
+    const pill = (e.target as HTMLElement).closest('.ac-tier-pill');
+    if (!pill) return;
+    timingPills.querySelectorAll('.ac-tier-pill').forEach((p) => p.classList.remove('selected'));
+    pill.classList.add('selected');
+    cmScheduleField.classList.toggle('hidden', (pill as HTMLElement).dataset.value !== 'schedule');
   });
 
   // ─── Campaign actions ───
   function buildSegment(): Record<string, unknown> {
-    const type = (document.querySelector<HTMLInputElement>('input[name="audience-type"]:checked'))?.value;
-    if (type === 'all') return { all_subscribers: true };
     const segment: Record<string, unknown> = {};
-    if (cmEvent.value) segment.event_slug = cmEvent.value;
-    const types = Array.from(document.querySelectorAll<HTMLInputElement>('.cm-ticket-type:checked')).map((c) => c.value);
-    if (types.length > 0) segment.ticket_types = types;
+
+    if (isSegmentActive('subscribers')) {
+      segment.all_subscribers = true;
+      if (segSubHours.value) segment.subscriber_hours = parseInt(segSubHours.value, 10);
+    }
+
+    if (isSegmentActive('buyers') && cmEvent.value) {
+      segment.event_slug = cmEvent.value;
+      const types = Array.from(ticketTypePills.querySelectorAll<HTMLElement>('.cm-ticket-type.selected'))
+        .map((p) => p.dataset.value!);
+      if (types.length > 0) segment.ticket_types = types;
+    }
+
+    if (isSegmentActive('checkins') && segCheckinEvent.value) {
+      segment.checkin_event_slug = segCheckinEvent.value;
+      if (segCheckinBefore.value) {
+        const eventInfo = events.find((e) => e.slug === segCheckinEvent.value);
+        const dateStr = eventInfo?.date ? eventInfo.date.split('T')[0] : new Date().toISOString().split('T')[0];
+        segment.checkin_before = `${dateStr}T${segCheckinBefore.value}:00`;
+      }
+    }
+
     return segment;
   }
 
   function getScheduledAt(): string | null {
-    const timing = (document.querySelector<HTMLInputElement>('input[name="timing"]:checked'))?.value;
+    const timing = (timingPills.querySelector('.ac-tier-pill.selected') as HTMLElement)?.dataset.value;
     if (timing === 'schedule' && cmScheduleAt.value) {
       return new Date(cmScheduleAt.value).toISOString();
     }
@@ -903,10 +1067,12 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     }
 
     cmFeedback.textContent = 'Sending test...';
+    const testPayload: Record<string, unknown> = { id: draft.campaign.id };
+    if (cmTestEmail.value.trim()) testPayload.test_email = cmTestEmail.value.trim();
     const res = await api<{ success?: boolean; sent_to?: string; error?: string }>('/api/email-campaigns?action=test', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: draft.campaign.id }),
+      body: JSON.stringify(testPayload),
     });
 
     if (res.error) {
@@ -968,9 +1134,19 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     cmFeedback.textContent = `${statusText} to ${res.sent_count} recipients`;
     cmFeedback.style.color = '#2ecc71';
     campaignForm.reset();
-    cmEventFilters.classList.add('hidden');
     cmScheduleField.classList.add('hidden');
     cmAudienceCount.textContent = '--';
+    // Reset segment toggles: subscribers on, others off
+    segmentToggles.forEach((t) => {
+      const isSubscribers = t.dataset.segment === 'subscribers';
+      t.classList.toggle('selected', isSubscribers);
+      const optsId = `seg-${t.dataset.segment}-opts`;
+      const opts = document.getElementById(optsId);
+      if (opts) opts.classList.toggle('hidden', !isSubscribers);
+    });
+    ticketTypePills.querySelectorAll('.ac-tier-pill').forEach((p) => p.classList.remove('selected'));
+    timingPills.querySelectorAll('.ac-tier-pill').forEach((p) => p.classList.remove('selected'));
+    timingPills.querySelector('[data-value="now"]')?.classList.add('selected');
     await loadCampaigns();
     setTimeout(() => { cmFeedback.textContent = ''; cmFeedback.style.color = ''; }, 3000);
   });
@@ -996,11 +1172,21 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   }
 
   function describeSegment(seg: Record<string, unknown>): string {
-    if (seg.all_subscribers) return 'All subscribers';
     const parts: string[] = [];
-    if (seg.event_slug) parts.push(String(seg.event_slug));
-    if (Array.isArray(seg.ticket_types)) parts.push(seg.ticket_types.join(', '));
-    return parts.join(' — ') || 'Custom';
+    if (seg.all_subscribers) {
+      parts.push(seg.subscriber_hours ? `Subs (last ${seg.subscriber_hours}h)` : 'All subs');
+    }
+    if (seg.event_slug) {
+      let desc = String(seg.event_slug);
+      if (Array.isArray(seg.ticket_types)) desc += ` (${seg.ticket_types.join(', ')})`;
+      parts.push(desc);
+    }
+    if (seg.checkin_event_slug) {
+      let desc = `Check-ins: ${seg.checkin_event_slug}`;
+      if (seg.checkin_before) desc += ` before ${String(seg.checkin_before).slice(11, 16)}`;
+      parts.push(desc);
+    }
+    return parts.join(' + ') || 'Custom';
   }
 
   function renderCampaigns() {

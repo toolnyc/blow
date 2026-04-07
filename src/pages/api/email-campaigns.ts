@@ -9,25 +9,37 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 interface AudienceSegment {
   all_subscribers?: boolean;
+  subscriber_hours?: number;
   event_slug?: string;
   ticket_types?: string[];
+  checkin_event_slug?: string;
+  checkin_before?: string;
 }
 
 /** Resolve audience segment to a deduplicated list of emails */
 async function resolveAudience(supabase: SupabaseClient, segment: AudienceSegment): Promise<string[]> {
   const emails = new Set<string>();
 
+  // Source 1: Subscribers (optionally filtered to last N hours)
   if (segment.all_subscribers) {
-    const { data: subs } = await supabase
+    let query = supabase
       .from('subscribers')
       .select('email')
       .is('unsubscribed_at', null);
+
+    if (segment.subscriber_hours && segment.subscriber_hours > 0) {
+      const since = new Date(Date.now() - segment.subscriber_hours * 60 * 60 * 1000).toISOString();
+      query = query.gte('subscribed_at', since);
+    }
+
+    const { data: subs } = await query;
 
     for (const s of subs ?? []) {
       if (s.email) emails.add(s.email.toLowerCase());
     }
   }
 
+  // Source 2: Ticket buyers (by event, optional ticket type filter)
   if (segment.event_slug) {
     let query = supabase
       .from('orders')
@@ -43,6 +55,25 @@ async function resolveAudience(supabase: SupabaseClient, segment: AudienceSegmen
 
     for (const o of orders ?? []) {
       if (o.customer_email) emails.add(o.customer_email.toLowerCase());
+    }
+  }
+
+  // Source 3: Door check-ins (by event, optional "arrived before" filter)
+  if (segment.checkin_event_slug) {
+    let query = supabase
+      .from('guests')
+      .select('email, first_checked_in_at')
+      .eq('event', segment.checkin_event_slug)
+      .gt('checked_in_count', 0);
+
+    if (segment.checkin_before) {
+      query = query.lt('first_checked_in_at', segment.checkin_before);
+    }
+
+    const { data: guests } = await query;
+
+    for (const g of guests ?? []) {
+      if (g.email) emails.add(g.email.toLowerCase());
     }
   }
 
@@ -260,12 +291,15 @@ async function handleTest(supabase: SupabaseClient, body: Record<string, unknown
 
   const resend = new Resend(import.meta.env.RESEND_API_KEY);
   const fromEmail = import.meta.env.RESEND_FROM_EMAIL;
+  const testEmail = typeof body.test_email === 'string' && body.test_email.trim()
+    ? body.test_email.trim()
+    : fromEmail;
   const origin = `${siteUrl.protocol}//${siteUrl.host}`;
   const wrappedHtml = wrapEmailHtml(campaign.html_body, origin);
 
   const { error } = await resend.emails.send({
     from: fromEmail,
-    to: [fromEmail],
+    to: [testEmail],
     subject: `[TEST] ${campaign.subject}`,
     html: wrappedHtml,
   });
@@ -274,5 +308,5 @@ async function handleTest(supabase: SupabaseClient, body: Record<string, unknown
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: JSON_HEADERS });
   }
 
-  return new Response(JSON.stringify({ success: true, sent_to: fromEmail }), { status: 200, headers: JSON_HEADERS });
+  return new Response(JSON.stringify({ success: true, sent_to: testEmail }), { status: 200, headers: JSON_HEADERS });
 }
