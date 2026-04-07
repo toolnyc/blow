@@ -676,7 +676,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
   function formatDate(iso: string): string {
     if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return new Date(iso.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
   function formatDateTime(iso: string): string {

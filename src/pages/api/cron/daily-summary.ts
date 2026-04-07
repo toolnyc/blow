@@ -74,7 +74,7 @@ export const GET: APIRoute = async ({ request }) => {
     const summaries: EventSummary[] = [];
 
     for (const ev of events) {
-      const eventDate = new Date(ev.date);
+      const eventDate = new Date(ev.date.slice(0, 10) + 'T00:00:00');
       const daysUntil = Math.max(0, Math.ceil((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
       const dateStr = eventDate.toLocaleDateString('en-US', {
         weekday: 'short',

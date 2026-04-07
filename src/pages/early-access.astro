@@ -197,7 +197,7 @@ import Taskbar from '../components/Taskbar.astro';
       eventInfo.style.display = 'block';
       eventName.textContent = data.event.name;
       if (data.event.date) {
-        const d = new Date(data.event.date);
+        const d = new Date(data.event.date.slice(0, 10) + 'T00:00:00');
         eventDate.textContent = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
       }
 
