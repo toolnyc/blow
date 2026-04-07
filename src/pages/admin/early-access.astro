@@ -4,7 +4,7 @@ export const prerender = false;
 import AdminLayout from '../../layouts/AdminLayout.astro';
 ---
 
-<AdminLayout title="Early Access — Blow Admin">
+<AdminLayout title="Outreach — Blow Admin">
   <div class="ac-root">
     <!-- Tab switcher -->
     <div class="ac-tabs">
@@ -169,9 +169,18 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
           </div>
 
           <div class="ac-field">
-            <label class="ac-label" for="cm-body">MESSAGE BODY</label>
-            <textarea id="cm-body" class="ac-input ac-textarea" rows="8" placeholder="Your message HTML... (wrapped in Blow email template)" required></textarea>
-            <span class="ac-hint">HTML is wrapped in the Blow branded email template with wordmark header and XOXO footer.</span>
+            <label class="ac-label">MESSAGE BODY</label>
+            <div class="ac-editor-toolbar">
+              <button type="button" class="ac-toolbar-btn" data-cmd="bold" title="Bold"><strong>B</strong></button>
+              <button type="button" class="ac-toolbar-btn" data-cmd="italic" title="Italic"><em>I</em></button>
+              <button type="button" class="ac-toolbar-btn" data-cmd="link" title="Insert Link">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6.5 9.5a3.5 3.5 0 005 0l2-2a3.5 3.5 0 00-5-5l-1 1M9.5 6.5a3.5 3.5 0 00-5 0l-2 2a3.5 3.5 0 005 5l1-1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <span class="ac-toolbar-sep"></span>
+              <button type="button" class="ac-toolbar-btn" data-cmd="insertLineBreak" title="Line Break">BR</button>
+            </div>
+            <div id="cm-body" class="ac-editor" contenteditable="true" data-placeholder="Write your message..."></div>
+            <span class="ac-hint">Wrapped in Blow branded email template with wordmark header and XOXO footer.</span>
           </div>
 
           <!-- Schedule -->
@@ -349,6 +358,70 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     font-family: var(--font-mono);
     font-size: 13px;
   }
+
+  /* Rich text editor */
+  .ac-editor-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: var(--sp-1) var(--sp-2);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    background: var(--surface);
+  }
+  .ac-toolbar-btn {
+    background: none;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    transition: all 0.15s;
+  }
+  .ac-toolbar-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border);
+    background: rgba(255,255,255,0.05);
+  }
+  .ac-toolbar-sep {
+    width: 1px;
+    height: 16px;
+    background: var(--border);
+    margin: 0 4px;
+  }
+  .ac-editor {
+    border: 1px solid var(--border);
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    padding: var(--sp-2);
+    min-height: 140px;
+    max-height: 400px;
+    overflow-y: auto;
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .ac-editor:focus { border-color: var(--text-display); }
+  .ac-editor:empty::before {
+    content: attr(data-placeholder);
+    color: var(--text-secondary);
+    opacity: 0.5;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .ac-editor a { color: var(--accent); text-decoration: underline; }
   .ac-hint {
     font-family: var(--font-mono);
     font-size: 11px;
@@ -680,7 +753,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   // Campaigns
   const campaignForm = document.getElementById('campaign-form') as HTMLFormElement;
   const cmSubject = document.getElementById('cm-subject') as HTMLInputElement;
-  const cmBody = document.getElementById('cm-body') as HTMLTextAreaElement;
+  const cmBody = document.getElementById('cm-body') as HTMLDivElement;
   const cmEvent = document.getElementById('cm-event') as HTMLSelectElement;
   const segCheckinEvent = document.getElementById('seg-checkin-event') as HTMLSelectElement;
   const segSubHours = document.getElementById('seg-sub-hours') as HTMLInputElement;
@@ -706,6 +779,24 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       const tab = btn.dataset.tab;
       tabCodes.classList.toggle('hidden', tab !== 'codes');
       tabCampaigns.classList.toggle('hidden', tab !== 'campaigns');
+    });
+  });
+
+  // ─── Rich text toolbar ───
+  document.querySelectorAll('.ac-toolbar-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      cmBody.focus();
+      const cmd = (btn as HTMLElement).dataset.cmd!;
+      if (cmd === 'bold') {
+        document.execCommand('bold');
+      } else if (cmd === 'italic') {
+        document.execCommand('italic');
+      } else if (cmd === 'link') {
+        const url = prompt('Enter URL:');
+        if (url) document.execCommand('createLink', false, url);
+      } else if (cmd === 'insertLineBreak') {
+        document.execCommand('insertHTML', false, '<br>');
+      }
     });
   });
 
@@ -1014,7 +1105,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
   btnSaveDraft.addEventListener('click', async () => {
     cmFeedback.textContent = '';
-    if (!cmSubject.value || !cmBody.value) {
+    if (!cmSubject.value || !cmBody.innerHTML.trim()) {
       cmFeedback.textContent = 'Subject and body are required';
       return;
     }
@@ -1024,7 +1115,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         subject: cmSubject.value,
-        html_body: cmBody.value,
+        html_body: cmBody.innerHTML.trim(),
         audience_segment: buildSegment(),
         scheduled_at: getScheduledAt(),
       }),
@@ -1044,7 +1135,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   btnTestSend.addEventListener('click', async () => {
     cmFeedback.textContent = '';
     // Save draft first, then test
-    if (!cmSubject.value || !cmBody.value) {
+    if (!cmSubject.value || !cmBody.innerHTML.trim()) {
       cmFeedback.textContent = 'Subject and body are required';
       return;
     }
@@ -1055,7 +1146,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         subject: cmSubject.value,
-        html_body: cmBody.value,
+        html_body: cmBody.innerHTML.trim(),
         audience_segment: buildSegment(),
         scheduled_at: getScheduledAt(),
       }),
@@ -1089,7 +1180,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   btnSendCampaign.addEventListener('click', async () => {
     cmFeedback.textContent = '';
 
-    if (!cmSubject.value || !cmBody.value) {
+    if (!cmSubject.value || !cmBody.innerHTML.trim()) {
       cmFeedback.textContent = 'Subject and body are required';
       return;
     }
@@ -1103,7 +1194,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         subject: cmSubject.value,
-        html_body: cmBody.value,
+        html_body: cmBody.innerHTML.trim(),
         audience_segment: buildSegment(),
         scheduled_at: getScheduledAt(),
       }),
