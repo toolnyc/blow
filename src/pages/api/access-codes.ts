@@ -166,7 +166,7 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
 
   const { error } = await auth.supabase
     .from('access_codes')
-    .update({ active: false })
+    .delete()
     .eq('id', id);
 
   if (error) {

@@ -32,11 +32,12 @@ export const GET: APIRoute = async ({ request, cookies }) => {
     });
   }
 
-  // Try to fetch orders (may not exist yet if table hasn't been migrated)
+  // Fetch orders, excluding refunded ones from revenue calculations
   const { data: orders } = await supabase
     .from('orders')
     .select('*')
-    .eq('event', event);
+    .eq('event', event)
+    .neq('status', 'refunded');
 
   // Try to fetch event metadata for walk_in_limit
   const { data: eventData } = await supabase

@@ -97,7 +97,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       <!-- Compose form -->
       <div class="ac-panel">
         <div class="ac-panel-header">
-          <h2 class="ac-panel-title">Compose</h2>
+          <h2 class="ac-panel-title" id="compose-title">Compose</h2>
+          <button id="btn-cancel-edit" class="ac-btn-cancel hidden">CANCEL EDIT</button>
         </div>
         <form id="campaign-form" class="ac-form" autocomplete="off">
           <div class="ac-field">
@@ -227,6 +228,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
                 <th class="num">Sent</th>
                 <th>Status</th>
                 <th>Created</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="campaigns-body"></tbody>
@@ -727,6 +729,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   let codes: AccessCode[] = [];
   let campaigns: Campaign[] = [];
   let audienceDebounce: ReturnType<typeof setTimeout> | null = null;
+  let editingCampaignId: string | null = null;
 
   // ─── DOM refs ───
   const tabBtns = document.querySelectorAll<HTMLButtonElement>('.ac-tab');
@@ -770,6 +773,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   const campaignsEmpty = document.getElementById('campaigns-empty')!;
   const campaignsTableWrap = document.getElementById('campaigns-table-wrap')!;
   const campaignsBody = document.getElementById('campaigns-body')!;
+  const composeTitle = document.getElementById('compose-title')!;
+  const btnCancelEdit = document.getElementById('btn-cancel-edit') as HTMLButtonElement;
 
   // ─── Tab switching ───
   tabBtns.forEach((btn) => {
@@ -1103,6 +1108,34 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     return null;
   }
 
+  async function saveDraft(): Promise<Campaign | null> {
+    const payload: Record<string, unknown> = {
+      subject: cmSubject.value,
+      html_body: cmBody.innerHTML.trim(),
+      audience_segment: buildSegment(),
+      scheduled_at: getScheduledAt(),
+    };
+
+    if (editingCampaignId) {
+      payload.id = editingCampaignId;
+      const res = await api<{ campaign?: Campaign; error?: string }>('/api/email-campaigns?action=update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.error) { cmFeedback.textContent = res.error; return null; }
+      return res.campaign ?? null;
+    } else {
+      const res = await api<{ campaign?: Campaign; error?: string }>('/api/email-campaigns?action=create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.error) { cmFeedback.textContent = res.error; return null; }
+      return res.campaign ?? null;
+    }
+  }
+
   btnSaveDraft.addEventListener('click', async () => {
     cmFeedback.textContent = '';
     if (!cmSubject.value || !cmBody.innerHTML.trim()) {
@@ -1110,21 +1143,13 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       return;
     }
 
-    const res = await api<{ campaign?: Campaign; error?: string }>('/api/email-campaigns?action=create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        subject: cmSubject.value,
-        html_body: cmBody.innerHTML.trim(),
-        audience_segment: buildSegment(),
-        scheduled_at: getScheduledAt(),
-      }),
-    });
+    const campaign = await saveDraft();
+    if (!campaign) return;
 
-    if (res.error) {
-      cmFeedback.textContent = res.error;
-      return;
-    }
+    // If this was a new draft, track it as editing now
+    editingCampaignId = campaign.id;
+    composeTitle.textContent = 'Editing Draft';
+    btnCancelEdit.classList.remove('hidden');
 
     cmFeedback.textContent = 'Draft saved';
     cmFeedback.style.color = '#2ecc71';
@@ -1134,31 +1159,21 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
   btnTestSend.addEventListener('click', async () => {
     cmFeedback.textContent = '';
-    // Save draft first, then test
     if (!cmSubject.value || !cmBody.innerHTML.trim()) {
       cmFeedback.textContent = 'Subject and body are required';
       return;
     }
 
     cmFeedback.textContent = 'Saving draft...';
-    const draft = await api<{ campaign?: Campaign; error?: string }>('/api/email-campaigns?action=create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        subject: cmSubject.value,
-        html_body: cmBody.innerHTML.trim(),
-        audience_segment: buildSegment(),
-        scheduled_at: getScheduledAt(),
-      }),
-    });
+    const campaign = await saveDraft();
+    if (!campaign) return;
 
-    if (draft.error || !draft.campaign) {
-      cmFeedback.textContent = draft.error ?? 'Failed to save draft';
-      return;
-    }
+    editingCampaignId = campaign.id;
+    composeTitle.textContent = 'Editing Draft';
+    btnCancelEdit.classList.remove('hidden');
 
     cmFeedback.textContent = 'Sending test...';
-    const testPayload: Record<string, unknown> = { id: draft.campaign.id };
+    const testPayload: Record<string, unknown> = { id: campaign.id };
     if (cmTestEmail.value.trim()) testPayload.test_email = cmTestEmail.value.trim();
     const res = await api<{ success?: boolean; sent_to?: string; error?: string }>('/api/email-campaigns?action=test', {
       method: 'POST',
@@ -1189,21 +1204,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     if (!confirm(`Send campaign to ${count} recipients?`)) return;
 
     cmFeedback.textContent = 'Saving draft...';
-    const draft = await api<{ campaign?: Campaign; error?: string }>('/api/email-campaigns?action=create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        subject: cmSubject.value,
-        html_body: cmBody.innerHTML.trim(),
-        audience_segment: buildSegment(),
-        scheduled_at: getScheduledAt(),
-      }),
-    });
-
-    if (draft.error || !draft.campaign) {
-      cmFeedback.textContent = draft.error ?? 'Failed to save draft';
-      return;
-    }
+    const campaign = await saveDraft();
+    if (!campaign) return;
 
     cmFeedback.textContent = 'Sending...';
     btnSendCampaign.disabled = true;
@@ -1211,7 +1213,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     const res = await api<{ success?: boolean; sent_count?: number; status?: string; error?: string }>('/api/email-campaigns?action=send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: draft.campaign.id }),
+      body: JSON.stringify({ id: campaign.id }),
     });
 
     btnSendCampaign.disabled = false;
@@ -1224,20 +1226,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     const statusText = res.status === 'scheduled' ? 'Scheduled' : 'Sent';
     cmFeedback.textContent = `${statusText} to ${res.sent_count} recipients`;
     cmFeedback.style.color = '#2ecc71';
-    campaignForm.reset();
-    cmScheduleField.classList.add('hidden');
-    cmAudienceCount.textContent = '--';
-    // Reset segment toggles: subscribers on, others off
-    segmentToggles.forEach((t) => {
-      const isSubscribers = t.dataset.segment === 'subscribers';
-      t.classList.toggle('selected', isSubscribers);
-      const optsId = `seg-${t.dataset.segment}-opts`;
-      const opts = document.getElementById(optsId);
-      if (opts) opts.classList.toggle('hidden', !isSubscribers);
-    });
-    ticketTypePills.querySelectorAll('.ac-tier-pill').forEach((p) => p.classList.remove('selected'));
-    timingPills.querySelectorAll('.ac-tier-pill').forEach((p) => p.classList.remove('selected'));
-    timingPills.querySelector('[data-value="now"]')?.classList.add('selected');
+    clearEditor();
     await loadCampaigns();
     setTimeout(() => { cmFeedback.textContent = ''; cmFeedback.style.color = ''; }, 3000);
   });
@@ -1283,15 +1272,147 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   function renderCampaigns() {
     campaignsBody.innerHTML = campaigns.map((c) => {
       const chipCls = `ac-chip-${c.status}`;
+      const actions = c.status === 'draft'
+        ? `<button class="ac-action-btn" data-edit-campaign="${c.id}">EDIT</button><button class="ac-action-btn ac-delete-btn" data-delete-campaign="${c.id}">DELETE</button>`
+        : '';
       return `<tr>
         <td>${esc(c.subject)}</td>
         <td style="font-size:12px">${esc(describeSegment(c.audience_segment))}</td>
         <td class="num">${c.sent_count}</td>
         <td><span class="ac-chip ${chipCls}">${esc(c.status)}</span></td>
         <td style="font-size:12px">${formatDate(c.created_at)}</td>
+        <td>${actions}</td>
       </tr>`;
     }).join('');
   }
+
+  // ─── Edit / Delete campaign actions ───
+  function loadDraftIntoEditor(c: Campaign) {
+    editingCampaignId = c.id;
+    composeTitle.textContent = 'Editing Draft';
+    btnCancelEdit.classList.remove('hidden');
+
+    cmSubject.value = c.subject;
+    cmBody.innerHTML = c.html_body;
+
+    // Restore audience segments
+    const seg = c.audience_segment as Record<string, unknown>;
+
+    // Reset all segment toggles first
+    segmentToggles.forEach((t) => {
+      t.classList.remove('selected');
+      const optsId = `seg-${t.dataset.segment}-opts`;
+      const opts = document.getElementById(optsId);
+      if (opts) opts.classList.add('hidden');
+    });
+    ticketTypePills.querySelectorAll('.ac-tier-pill').forEach((p) => p.classList.remove('selected'));
+
+    if (seg.all_subscribers) {
+      const toggle = document.querySelector<HTMLButtonElement>('.ac-segment-toggle[data-segment="subscribers"]');
+      toggle?.classList.add('selected');
+      document.getElementById('seg-subscribers-opts')?.classList.remove('hidden');
+      if (seg.subscriber_hours) segSubHours.value = String(seg.subscriber_hours);
+    }
+
+    if (seg.event_slug) {
+      const toggle = document.querySelector<HTMLButtonElement>('.ac-segment-toggle[data-segment="buyers"]');
+      toggle?.classList.add('selected');
+      document.getElementById('seg-buyers-opts')?.classList.remove('hidden');
+      cmEvent.value = String(seg.event_slug);
+      if (Array.isArray(seg.ticket_types)) {
+        seg.ticket_types.forEach((tt: string) => {
+          ticketTypePills.querySelector<HTMLElement>(`.cm-ticket-type[data-value="${tt}"]`)?.classList.add('selected');
+        });
+      }
+    }
+
+    if (seg.checkin_event_slug) {
+      const toggle = document.querySelector<HTMLButtonElement>('.ac-segment-toggle[data-segment="checkins"]');
+      toggle?.classList.add('selected');
+      document.getElementById('seg-checkins-opts')?.classList.remove('hidden');
+      segCheckinEvent.value = String(seg.checkin_event_slug);
+      if (seg.checkin_before) {
+        const time = String(seg.checkin_before).slice(11, 16);
+        segCheckinBefore.value = time;
+      }
+    }
+
+    // Restore timing
+    if (c.scheduled_at) {
+      timingPills.querySelectorAll('.ac-tier-pill').forEach((p) => p.classList.remove('selected'));
+      timingPills.querySelector('[data-value="schedule"]')?.classList.add('selected');
+      cmScheduleField.classList.remove('hidden');
+      // Convert ISO to datetime-local format
+      const dt = new Date(c.scheduled_at);
+      const local = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      cmScheduleAt.value = local;
+    } else {
+      timingPills.querySelectorAll('.ac-tier-pill').forEach((p) => p.classList.remove('selected'));
+      timingPills.querySelector('[data-value="now"]')?.classList.add('selected');
+      cmScheduleField.classList.add('hidden');
+    }
+
+    updateAudienceCount();
+
+    // Scroll to compose form
+    campaignForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function clearEditor() {
+    editingCampaignId = null;
+    composeTitle.textContent = 'Compose';
+    btnCancelEdit.classList.add('hidden');
+    cmSubject.value = '';
+    cmBody.innerHTML = '';
+    cmScheduleField.classList.add('hidden');
+    cmScheduleAt.value = '';
+    cmAudienceCount.textContent = '--';
+
+    // Reset segments: subscribers on, others off
+    segmentToggles.forEach((t) => {
+      const isSubscribers = t.dataset.segment === 'subscribers';
+      t.classList.toggle('selected', isSubscribers);
+      const optsId = `seg-${t.dataset.segment}-opts`;
+      const opts = document.getElementById(optsId);
+      if (opts) opts.classList.toggle('hidden', !isSubscribers);
+    });
+    segSubHours.value = '';
+    segCheckinBefore.value = '';
+    ticketTypePills.querySelectorAll('.ac-tier-pill').forEach((p) => p.classList.remove('selected'));
+    timingPills.querySelectorAll('.ac-tier-pill').forEach((p) => p.classList.remove('selected'));
+    timingPills.querySelector('[data-value="now"]')?.classList.add('selected');
+  }
+
+  btnCancelEdit.addEventListener('click', () => clearEditor());
+
+  campaignsBody.addEventListener('click', async (e) => {
+    const btn = (e.target as HTMLElement).closest('button');
+    if (!btn) return;
+
+    const editId = btn.dataset.editCampaign;
+    if (editId) {
+      const campaign = campaigns.find((c) => c.id === editId);
+      if (campaign) loadDraftIntoEditor(campaign);
+      return;
+    }
+
+    const deleteId = btn.dataset.deleteCampaign;
+    if (deleteId) {
+      if (!confirm('Delete this draft?')) return;
+      const res = await api<{ success?: boolean; error?: string }>('/api/email-campaigns?action=delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: deleteId }),
+      });
+      if (res.error) {
+        alert(res.error);
+        return;
+      }
+      // If we were editing this draft, clear the editor
+      if (editingCampaignId === deleteId) clearEditor();
+      await loadCampaigns();
+    }
+  });
 
   // ─── Init ───
   loadEvents();

@@ -30,15 +30,35 @@ const { data: ticketRows } = await supabase
   .select('tickets');
 const totalTickets = (ticketRows ?? []).reduce((sum, r) => sum + (r.tickets ?? 0), 0);
 
+// Next event tickets + revenue (specific to the upcoming event)
+let nextEventTickets = 0;
+let nextEventRevenueCents = 0;
+if (nextEventRow) {
+  const { data: nextEventOrders } = await supabase
+    .from('orders')
+    .select('quantity, amount_cents')
+    .eq('event', nextEventRow.slug)
+    .neq('status', 'refunded');
+  for (const o of (nextEventOrders ?? [])) {
+    nextEventTickets += (o.quantity as number) ?? 0;
+    nextEventRevenueCents += (o.amount_cents as number) ?? 0;
+  }
+}
+const nextEventRevenueDisplay = nextEventRevenueCents > 0
+  ? `$${(nextEventRevenueCents / 100).toLocaleString('en-US', { minimumFractionDigits: 0 })}`
+  : '$0';
+
 // Subscriber count
 const { count: subscriberCount } = await supabase
   .from('subscribers')
   .select('*', { count: 'exact', head: true });
 
 // Revenue: use orders if available, else estimate from guests × tier prices
+// Exclude refunded orders from revenue and ticket counts
 const { data: revenueRows } = await supabase
   .from('orders')
-  .select('amount_cents');
+  .select('amount_cents, status')
+  .neq('status', 'refunded');
 let totalRevenueCents = (revenueRows ?? []).reduce((sum: number, r: Record<string, unknown>) => sum + ((r.amount_cents as number) ?? 0), 0);
 
 // Fallback: estimate from guest ticket types when no order data
@@ -103,25 +123,33 @@ const recentActivity = activityItems.slice(0, 10);
 <AdminLayout title="Dashboard — Blow Admin">
   <h1 class="page-title">Dashboard</h1>
 
+  {nextEventRow && (
+    <div class="dashboard-event-header">
+      <span class="event-header-name">{nextEventSub}</span>
+      <span class="event-header-date">{nextEventLabel}</span>
+    </div>
+  )}
+
   <div class="dashboard-stats">
     <div class="widget">
-      <div class="widget-label">Next Event</div>
-      <div class="widget-value">{nextEventLabel}</div>
+      <div class="widget-label">Tickets Sold</div>
+      <div class="widget-value accent">{nextEventTickets}</div>
       <div class="widget-sub">{nextEventSub}</div>
     </div>
     <div class="widget">
-      <div class="widget-label">Tickets Sold</div>
-      <div class="widget-value accent">{totalTickets}</div>
-      <div class="widget-sub">all events</div>
+      <div class="widget-label">Revenue</div>
+      <div class="widget-value">{nextEventRevenueDisplay}</div>
+      <div class="widget-sub">{nextEventSub}</div>
     </div>
     <div class="widget">
       <div class="widget-label">Subscribers</div>
       <div class="widget-value">{subscriberCount ?? 0}</div>
+      <div class="widget-sub">total</div>
     </div>
     <div class="widget">
-      <div class="widget-label">Revenue</div>
+      <div class="widget-label">Lifetime Revenue</div>
       <div class="widget-value">{revenueDisplay}</div>
-      <div class="widget-sub">lifetime</div>
+      <div class="widget-sub">{totalTickets} tickets · all events</div>
     </div>
   </div>
 
@@ -155,6 +183,29 @@ const recentActivity = activityItems.slice(0, 10);
 </AdminLayout>
 
 <style>
+  .dashboard-event-header {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-4);
+    padding-bottom: var(--sp-3);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .event-header-name {
+    font-family: var(--font-heading);
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text-display);
+  }
+
+  .event-header-date {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    letter-spacing: 0.04em;
+  }
+
   .dashboard-stats {
     display: grid;
     grid-template-columns: repeat(2, 1fr);

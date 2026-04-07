@@ -55,7 +55,7 @@ export const GET: APIRoute = async ({ request }) => {
   // Fetch the unlocked tiers (by name, regardless of visibility)
   const { data: allTiers } = await supabase
     .from('ticket_tiers')
-    .select('name, price_cents')
+    .select('name, price_cents, max_per_order')
     .eq('event_slug', accessCode.event_slug)
     .eq('active', true)
     .order('sort_order');

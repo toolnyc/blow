@@ -268,14 +268,10 @@ const menuItems = [
 
   .ticket-buttons {
     display: flex;
-    gap: 8px;
-    justify-content: center;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
     margin-top: 16px;
-  }
-
-  .buy-btn {
-    min-width: 120px;
-    font-weight: bold;
   }
 
   .dialog-overlay {
@@ -335,6 +331,77 @@ const menuItems = [
     .mixtapes-content {
       min-width: 0;
     }
+  }
+</style>
+
+<style is:global>
+  .tier-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .tier-label {
+    font-size: 12px;
+    font-weight: bold;
+    white-space: nowrap;
+  }
+
+  .tier-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .qty-controls {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border: 2px solid #888;
+    background: #fff;
+    flex-shrink: 0;
+  }
+
+  .qty-btn {
+    width: 24px;
+    height: 22px;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 0;
+    border: none;
+    background: #c0c0c0;
+    cursor: pointer;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .qty-btn:hover:not(:disabled) {
+    background: #d4d4d4;
+  }
+
+  .qty-btn:disabled {
+    color: #aaa;
+    cursor: default;
+  }
+
+  .qty-display {
+    width: 28px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: bold;
+    font-family: monospace;
+    background: #fff;
+    line-height: 22px;
+  }
+
+  .buy-btn {
+    min-width: 50px;
+    font-weight: bold;
+    font-size: 12px;
+    flex-shrink: 0;
   }
 </style>
 
@@ -919,32 +986,86 @@ const menuItems = [
 
       buttonsEl.innerHTML = '';
       for (const tier of tiers) {
-        const btn = document.createElement('button');
-        btn.className = 'buy-btn';
-        btn.dataset.tier = tier.name;
+        const maxQty = tier.max_per_order ?? 4;
         const dollars = (tier.price_cents / 100).toFixed(0);
-        btn.textContent = `${tier.name} — $${dollars}`;
-        btn.addEventListener('click', () => handleCheckout(btn));
-        buttonsEl.appendChild(btn);
+
+        const row = document.createElement('div');
+        row.className = 'tier-row';
+
+        const label = document.createElement('span');
+        label.className = 'tier-label';
+        label.textContent = `${tier.name} — $${dollars}`;
+        row.appendChild(label);
+
+        const bottom = document.createElement('div');
+        bottom.className = 'tier-controls';
+
+        let qty = 1;
+
+        if (maxQty > 1) {
+          const controls = document.createElement('div');
+          controls.className = 'qty-controls';
+
+          const minusBtn = document.createElement('button');
+          minusBtn.className = 'qty-btn';
+          minusBtn.textContent = '−';
+          minusBtn.disabled = true;
+
+          const qtySpan = document.createElement('span');
+          qtySpan.className = 'qty-display';
+          qtySpan.textContent = '1';
+
+          const plusBtn = document.createElement('button');
+          plusBtn.className = 'qty-btn';
+          plusBtn.textContent = '+';
+
+          minusBtn.addEventListener('click', () => {
+            if (qty > 1) { qty--; qtySpan.textContent = String(qty); }
+            minusBtn.disabled = qty <= 1;
+            plusBtn.disabled = qty >= maxQty;
+          });
+
+          plusBtn.addEventListener('click', () => {
+            if (qty < maxQty) { qty++; qtySpan.textContent = String(qty); }
+            minusBtn.disabled = qty <= 1;
+            plusBtn.disabled = qty >= maxQty;
+          });
+
+          controls.appendChild(minusBtn);
+          controls.appendChild(qtySpan);
+          controls.appendChild(plusBtn);
+          bottom.appendChild(controls);
+        }
+
+        const buyBtn = document.createElement('button');
+        buyBtn.className = 'buy-btn';
+        buyBtn.dataset.tier = tier.name;
+        buyBtn.textContent = 'Buy';
+        buyBtn.addEventListener('click', () => handleCheckout(buyBtn, () => qty));
+        bottom.appendChild(buyBtn);
+        row.appendChild(bottom);
+
+        buttonsEl.appendChild(row);
       }
     } catch {
       dateEl.textContent = 'Could not load event';
     }
   }
 
-  async function handleCheckout(button: HTMLButtonElement) {
+  async function handleCheckout(button: HTMLButtonElement, getQty?: () => number) {
     const tier = button.dataset.tier;
     if (!tier || !currentEventSlug) return;
 
+    const quantity = getQty ? getQty() : 1;
     const label = button.textContent;
     button.disabled = true;
-    button.textContent = 'Loading...';
+    button.textContent = '...';
 
     try {
       const response = await fetch('/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier, event: currentEventSlug }),
+        body: JSON.stringify({ tier, quantity, event: currentEventSlug }),
       });
 
       const data = await response.json();

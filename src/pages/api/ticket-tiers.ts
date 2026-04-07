@@ -47,6 +47,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   const priceCents = typeof body.price_cents === 'number' ? body.price_cents : 0;
   const sortOrder = typeof body.sort_order === 'number' ? body.sort_order : 0;
+  const maxPerOrder = typeof body.max_per_order === 'number' && body.max_per_order >= 1 ? body.max_per_order : 4;
   const visibility = typeof body.visibility === 'string' && ['visible', 'scheduled', 'hidden'].includes(body.visibility)
     ? body.visibility : 'visible';
   const availableFrom = typeof body.available_from === 'string' ? body.available_from : null;
@@ -111,6 +112,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       stripe_price_id: stripePriceId,
       stripe_product_id: stripeProductId,
       sort_order: sortOrder,
+      max_per_order: maxPerOrder,
       visibility,
       available_from: availableFrom,
       available_until: availableUntil,
@@ -151,6 +153,9 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
   }
   if (body.available_until !== undefined) {
     updates.available_until = typeof body.available_until === 'string' ? body.available_until : null;
+  }
+  if (typeof body.max_per_order === 'number' && body.max_per_order >= 1) {
+    updates.max_per_order = body.max_per_order;
   }
 
   if (Object.keys(updates).length === 0) {

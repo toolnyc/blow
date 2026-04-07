@@ -62,6 +62,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
               <div class="ev-tier-add">
                 <input type="text" id="tier-name" class="ev-input ev-tier-input" placeholder="Tier name (e.g. Regular)" />
                 <input type="number" id="tier-price" class="ev-input ev-tier-input ev-tier-price" placeholder="Price ($)" min="1" step="1" />
+                <input type="number" id="tier-max-qty" class="ev-input ev-tier-input ev-tier-max-qty" placeholder="Max qty" min="1" max="10" value="4" style="width: 70px;" />
                 <select id="tier-visibility" class="ev-input ev-tier-vis">
                   <option value="visible">Visible</option>
                   <option value="scheduled">Scheduled</option>
@@ -1581,6 +1582,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   const tiersList = document.getElementById('tiers-list') as HTMLDivElement;
   const tierNameInput = document.getElementById('tier-name') as HTMLInputElement;
   const tierPriceInput = document.getElementById('tier-price') as HTMLInputElement;
+  const tierMaxQtyInput = document.getElementById('tier-max-qty') as HTMLInputElement;
   const tierVisSelect = document.getElementById('tier-visibility') as HTMLSelectElement;
   const tierScheduleFields = document.getElementById('tier-schedule-fields') as HTMLDivElement;
   const tierFromInput = document.getElementById('tier-from') as HTMLInputElement;
@@ -1598,6 +1600,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     id?: string;
     name: string;
     price_cents: number;
+    max_per_order?: number;
     stripe_price_id?: string;
     active?: boolean;
     visibility?: string;
@@ -1617,7 +1620,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     if (!name || isNaN(priceDollars) || priceDollars <= 0) return;
 
     const vis = tierVisSelect.value;
-    const item: TierItem = { name, price_cents: Math.round(priceDollars * 100), visibility: vis };
+    const maxQty = parseInt(tierMaxQtyInput.value) || 4;
+    const item: TierItem = { name, price_cents: Math.round(priceDollars * 100), max_per_order: maxQty, visibility: vis };
     if (vis === 'scheduled') {
       if (tierFromInput.value) item.available_from = new Date(tierFromInput.value).toISOString();
       if (tierUntilInput.value) item.available_until = new Date(tierUntilInput.value).toISOString();
@@ -1625,6 +1629,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     pendingTiers.push(item);
     tierNameInput.value = '';
     tierPriceInput.value = '';
+    tierMaxQtyInput.value = '4';
     tierVisSelect.value = 'visible';
     tierFromInput.value = '';
     tierUntilInput.value = '';
@@ -1679,6 +1684,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
         <span class="ev-tier-item-name">${escManage(t.name)}</span>
         <span class="ev-tier-item-price">$${(t.price_cents / 100).toFixed(0)}</span>
         <span class="ev-tier-item-status ${isSaved ? VIS_CLASSES[vis] ?? '' : 'pending'}">${isSaved ? VIS_LABELS[vis] ?? vis.toUpperCase() : 'PENDING'}</span>
+        <span class="ev-tier-schedule-label">max ${t.max_per_order ?? 4}/order</span>
         ${schedule ? `<span class="ev-tier-schedule-label">${escManage(schedule)}</span>` : ''}
       `;
 
@@ -1842,6 +1848,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
                 event_slug: slug,
                 name: t.name,
                 price_cents: t.price_cents,
+                max_per_order: t.max_per_order ?? 4,
                 sort_order: savedTiers.length + i,
                 visibility: t.visibility ?? 'visible',
                 available_from: t.available_from ?? null,

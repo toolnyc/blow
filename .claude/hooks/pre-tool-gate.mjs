@@ -4,6 +4,7 @@
  * Gate 1: Block new src/ files without feature-active sentinel
  * Gate 2: Block new migration files without feature-active sentinel
  * Gate 3: Warn on git commit/PR without verify-passed sentinel
+ * Gate 4: Block vercel env add/rm on protected keys (prevent accidental overwrites)
  */
 
 import { dirname, join } from 'path';
@@ -56,7 +57,40 @@ if (
   process.exit(2);
 }
 
-// Gate 3: Warn on git commit without verify-passed
+// Gate 3: Block vercel env add/rm on protected keys
+const PROTECTED_ENV_KEYS = [
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'SUPABASE_URL',
+  'SUPABASE_ANON_KEY',
+  'DATABASE_URL',
+  'RESEND_API_KEY',
+];
+
+if (
+  toolName === 'Bash' &&
+  typeof filePath === 'string' &&
+  /vercel\s+env\s+(add|rm|remove)\b/.test(filePath)
+) {
+  const hitKey = PROTECTED_ENV_KEYS.find(k => filePath.includes(k));
+  if (hitKey) {
+    const msg = [
+      `BLOCKED: "${hitKey}" is a protected env var.`,
+      '',
+      'These keys were already configured and overwriting them previously broke Stripe.',
+      'If you genuinely need to change this value:',
+      '  1. Ask Pete to do it manually via the Vercel dashboard',
+      '  2. Or have Pete run the command directly with ! vercel env ...',
+      '',
+      'Claude should NEVER add/remove protected env vars via CLI.',
+    ].join('\n');
+
+    console.log(JSON.stringify({ hookSpecificOutput: msg }));
+    process.exit(2);
+  }
+}
+
+// Gate 4: Warn on git commit without verify-passed
 if (
   toolName === 'Bash' &&
   typeof filePath === 'string' &&

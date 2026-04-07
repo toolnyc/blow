@@ -37,7 +37,7 @@ export const GET: APIRoute = async () => {
   // Fetch active tiers that are either always-visible or within their scheduled window
   const { data: allTiers } = await supabase
     .from('ticket_tiers')
-    .select('name, price_cents, visibility, available_from, available_until')
+    .select('name, price_cents, max_per_order, visibility, available_from, available_until')
     .eq('event_slug', event.slug)
     .eq('active', true)
     .in('visibility', ['visible', 'scheduled'])
@@ -50,7 +50,7 @@ export const GET: APIRoute = async () => {
     if (t.available_from && now < t.available_from) return false;
     if (t.available_until && now > t.available_until) return false;
     return true;
-  }).map(({ name, price_cents }) => ({ name, price_cents }));
+  }).map(({ name, price_cents, max_per_order }) => ({ name, price_cents, max_per_order }));
 
   return new Response(JSON.stringify({ event, tiers }), {
     status: 200,
@@ -91,7 +91,7 @@ export const POST: APIRoute = async ({ request, url }) => {
   }
 
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10) {
-    return new Response(JSON.stringify({ error: 'Quantity must be 1-10' }), {
+    return new Response(JSON.stringify({ error: 'Quantity must be between 1 and 10' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -144,7 +144,7 @@ export const POST: APIRoute = async ({ request, url }) => {
   // Build tier query — with access code, skip visibility filter
   let tierQuery = supabase
     .from('ticket_tiers')
-    .select('stripe_price_id, name, price_cents, visibility, available_from, available_until')
+    .select('stripe_price_id, name, price_cents, max_per_order, visibility, available_from, available_until')
     .eq('event_slug', event)
     .ilike('name', tier)
     .eq('active', true);
@@ -171,6 +171,14 @@ export const POST: APIRoute = async ({ request, url }) => {
         headers: { 'Content-Type': 'application/json' },
       });
     }
+  }
+
+  // Enforce per-tier max quantity
+  if (quantity > (tierData.max_per_order ?? 10)) {
+    return new Response(JSON.stringify({ error: `Maximum ${tierData.max_per_order} tickets per order for this tier` }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   // Enforce scheduling window for non-access-code purchases

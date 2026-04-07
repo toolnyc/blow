@@ -137,7 +137,7 @@ export const GET: APIRoute = async ({ cookies }) => {
   return new Response(JSON.stringify({ campaigns: campaigns ?? [] }), { status: 200, headers: JSON_HEADERS });
 };
 
-// POST — multiplex on ?action= param: create, send, test
+// POST — multiplex on ?action= param: create, update, send, test, delete
 export const POST: APIRoute = async ({ request, cookies, url }) => {
   const auth = await requireAdmin(cookies);
   if (auth.error) return auth.error;
@@ -153,10 +153,14 @@ export const POST: APIRoute = async ({ request, cookies, url }) => {
 
   if (action === 'create') {
     return handleCreate(auth.supabase, body);
+  } else if (action === 'update') {
+    return handleUpdate(auth.supabase, body);
   } else if (action === 'send') {
     return handleSend(auth.supabase, body, url);
   } else if (action === 'test') {
     return handleTest(auth.supabase, body, url);
+  } else if (action === 'delete') {
+    return handleDelete(auth.supabase, body);
   }
 
   return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), { status: 400, headers: JSON_HEADERS });
@@ -190,6 +194,87 @@ async function handleCreate(supabase: SupabaseClient, body: Record<string, unkno
   }
 
   return new Response(JSON.stringify({ campaign }), { status: 201, headers: JSON_HEADERS });
+}
+
+async function handleUpdate(supabase: SupabaseClient, body: Record<string, unknown>): Promise<Response> {
+  const id = typeof body.id === 'string' ? body.id : '';
+  if (!id) {
+    return new Response(JSON.stringify({ error: 'Campaign id is required' }), { status: 400, headers: JSON_HEADERS });
+  }
+
+  const { data: existing } = await supabase
+    .from('email_campaigns')
+    .select('status')
+    .eq('id', id)
+    .single();
+
+  if (!existing) {
+    return new Response(JSON.stringify({ error: 'Campaign not found' }), { status: 404, headers: JSON_HEADERS });
+  }
+
+  if (existing.status !== 'draft') {
+    return new Response(JSON.stringify({ error: `Cannot edit a campaign with status "${existing.status}"` }), { status: 400, headers: JSON_HEADERS });
+  }
+
+  const subject = typeof body.subject === 'string' ? body.subject.trim() : '';
+  const htmlBody = typeof body.html_body === 'string' ? body.html_body.trim() : '';
+  const audienceSegment = typeof body.audience_segment === 'object' && body.audience_segment !== null
+    ? body.audience_segment : {};
+  const scheduledAt = typeof body.scheduled_at === 'string' ? body.scheduled_at : null;
+
+  if (!subject || !htmlBody) {
+    return new Response(JSON.stringify({ error: 'subject and html_body are required' }), { status: 400, headers: JSON_HEADERS });
+  }
+
+  const { data: campaign, error } = await supabase
+    .from('email_campaigns')
+    .update({
+      subject,
+      html_body: htmlBody,
+      audience_segment: audienceSegment,
+      scheduled_at: scheduledAt,
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: JSON_HEADERS });
+  }
+
+  return new Response(JSON.stringify({ campaign }), { status: 200, headers: JSON_HEADERS });
+}
+
+async function handleDelete(supabase: SupabaseClient, body: Record<string, unknown>): Promise<Response> {
+  const id = typeof body.id === 'string' ? body.id : '';
+  if (!id) {
+    return new Response(JSON.stringify({ error: 'Campaign id is required' }), { status: 400, headers: JSON_HEADERS });
+  }
+
+  const { data: existing } = await supabase
+    .from('email_campaigns')
+    .select('status')
+    .eq('id', id)
+    .single();
+
+  if (!existing) {
+    return new Response(JSON.stringify({ error: 'Campaign not found' }), { status: 404, headers: JSON_HEADERS });
+  }
+
+  if (existing.status !== 'draft') {
+    return new Response(JSON.stringify({ error: `Cannot delete a campaign with status "${existing.status}"` }), { status: 400, headers: JSON_HEADERS });
+  }
+
+  const { error } = await supabase
+    .from('email_campaigns')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: JSON_HEADERS });
+  }
+
+  return new Response(JSON.stringify({ success: true }), { status: 200, headers: JSON_HEADERS });
 }
 
 async function handleSend(supabase: SupabaseClient, body: Record<string, unknown>, siteUrl: URL): Promise<Response> {
