@@ -39,7 +39,59 @@ export const POST: APIRoute = async ({ request }) => {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
     const email = session.customer_details?.email;
-    const eventSlug = session.metadata?.event ?? 'unknown';
+    let eventSlug = session.metadata?.event ?? '';
+
+    // Use tier from metadata (set during checkout creation) with line-item fallback
+    let ticketType = session.metadata?.tier ?? 'regular';
+    let quantity = 1;
+    let amountCents = session.amount_total ?? 0;
+
+    try {
+      const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 1 });
+      const firstItem = lineItems.data[0];
+      if (firstItem) {
+        quantity = firstItem.quantity ?? 1;
+
+        // Resolve event + tier from price ID when metadata is missing
+        // (handles purchases via Payment Links, Stripe Dashboard, etc.)
+        if (!eventSlug || !session.metadata?.tier) {
+          const priceId = firstItem.price?.id;
+          if (priceId) {
+            const { data: tierRow } = await supabase
+              .from('ticket_tiers')
+              .select('event_slug, name')
+              .eq('stripe_price_id', priceId)
+              .single();
+            if (tierRow) {
+              if (!eventSlug) eventSlug = tierRow.event_slug;
+              if (!session.metadata?.tier) ticketType = tierRow.name;
+            }
+          }
+        }
+
+        // Last-resort description-based tier detection
+        if (!session.metadata?.tier && ticketType === 'regular') {
+          const description = (firstItem.description ?? '').toLowerCase();
+          if (description.includes('supporter')) ticketType = 'supporter';
+        }
+      }
+    } catch (lineItemErr) {
+      console.warn('Webhook: could not fetch line items:', lineItemErr);
+    }
+
+    // If we still couldn't resolve the event, skip order/guest creation
+    if (!eventSlug) {
+      console.warn('Webhook: checkout.session.completed with no resolvable event', session.id);
+      void notifyError({
+        endpoint: 'stripe-webhook',
+        message: `Could not resolve event for session ${session.id}. No metadata and price ID not found in ticket_tiers.`,
+        context: 'Event resolution',
+      });
+      return new Response(JSON.stringify({ received: true, warning: 'no event resolved' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
 
     // Fetch event details for the confirmation email
     let eventName = '';
@@ -59,26 +111,6 @@ export const POST: APIRoute = async ({ request }) => {
       }
     } catch {
       // Non-critical — email still sends without event details
-    }
-
-    // Use tier from metadata (set during checkout creation) with line-item fallback
-    let ticketType = session.metadata?.tier ?? 'regular';
-    let quantity = 1;
-    let amountCents = session.amount_total ?? 0;
-
-    try {
-      const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 1 });
-      const firstItem = lineItems.data[0];
-      if (firstItem) {
-        quantity = firstItem.quantity ?? 1;
-        // Only fall back to description-based detection if metadata tier is missing
-        if (!session.metadata?.tier) {
-          const description = (firstItem.description ?? '').toLowerCase();
-          ticketType = description.includes('supporter') ? 'supporter' : 'regular';
-        }
-      }
-    } catch (lineItemErr) {
-      console.warn('Webhook: could not fetch line items:', lineItemErr);
     }
 
     // Retrieve payment details for the confirmation email
