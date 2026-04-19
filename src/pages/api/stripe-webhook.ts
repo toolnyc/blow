@@ -79,15 +79,10 @@ export const POST: APIRoute = async ({ request }) => {
       console.warn('Webhook: could not fetch line items:', lineItemErr);
     }
 
-    // If we still couldn't resolve the event, skip order/guest creation
+    // If we still couldn't resolve the event, it's not a Blow purchase
+    // (e.g. another event on the same Stripe account) — silently ignore
     if (!eventSlug) {
-      console.warn('Webhook: checkout.session.completed with no resolvable event', session.id);
-      void notifyError({
-        endpoint: 'stripe-webhook',
-        message: `Could not resolve event for session ${session.id}. No metadata and price ID not found in ticket_tiers.`,
-        context: 'Event resolution',
-      });
-      return new Response(JSON.stringify({ received: true, warning: 'no event resolved' }), {
+      return new Response(JSON.stringify({ received: true }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
