@@ -102,6 +102,9 @@ export const POST: APIRoute = async ({ request }) => {
         if (eventRow.date) {
           const d = new Date(eventRow.date.slice(0, 10) + 'T00:00:00');
           eventDateFormatted = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+          if (eventSlug === 'may3') {
+            eventDateFormatted += ' · 10:00 AM';
+          }
         }
       }
     } catch {
