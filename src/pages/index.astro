@@ -440,13 +440,14 @@ const menuItems = [
       zIndex: 1,
     });
 
-    // Mobile positioning — compact stack
+    // Mobile positioning — compact stack, events centered on top
     const isMobile = window.innerWidth <= 600;
     if (isMobile) {
+      const eventsY = Math.max(60, Math.round(window.innerHeight / 2 - 160));
       const mobilePositions: Record<string, { x: number; y: number }> = {
         'subscribe-window': { x: 12, y: 10 },
         'mixtapes-window': { x: 12, y: 190 },
-        'events-window': { x: 12, y: 440 },
+        'events-window': { x: 12, y: eventsY },
       };
       const pos = mobilePositions[id];
       if (pos) {
@@ -679,6 +680,11 @@ const menuItems = [
     }
   }
 
+  // Dialog elements (declared early so URL-param error handling can use them)
+  const successDialog = document.getElementById('success-dialog') as HTMLDivElement;
+  const errorDialog = document.getElementById('error-dialog') as HTMLDivElement;
+  const errorMessage = document.getElementById('error-message') as HTMLParagraphElement;
+
   // Hide login window by default (before checking URL params)
   closeWindow('login-window');
 
@@ -696,18 +702,15 @@ const menuItems = [
       errorDialog.style.display = 'flex';
     }
   } else {
-    // Focus subscribe window on load (skip when login window is shown)
+    // Focus subscribe first, then events so events sits on top
     focusWindow('subscribe-window');
+    focusWindow('events-window');
   }
 
   // Subscribe form logic
   const emailInput = document.getElementById('email') as HTMLInputElement;
   const submitBtn = document.getElementById('submit-btn') as HTMLButtonElement;
   const statusText = document.querySelector('[data-status-text]') as HTMLParagraphElement;
-
-  const successDialog = document.getElementById('success-dialog') as HTMLDivElement;
-  const errorDialog = document.getElementById('error-dialog') as HTMLDivElement;
-  const errorMessage = document.getElementById('error-message') as HTMLParagraphElement;
 
   const successOk = document.getElementById('success-ok') as HTMLButtonElement;
   const errorOk = document.getElementById('error-ok') as HTMLButtonElement;
