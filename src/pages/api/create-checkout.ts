@@ -105,6 +105,7 @@ export const POST: APIRoute = async ({ request, url }) => {
 
   // If access code provided, validate it and allow hidden tiers
   let validatedCodeId: string | undefined;
+  let validatedCodeUsedCount = 0;
   let allowedTierNames: string[] | undefined;
 
   if (accessCode) {
@@ -138,6 +139,7 @@ export const POST: APIRoute = async ({ request, url }) => {
     }
 
     validatedCodeId = codeData.id;
+    validatedCodeUsedCount = codeData.used_count ?? 0;
     allowedTierNames = codeData.tier_names;
   }
 
@@ -193,18 +195,24 @@ export const POST: APIRoute = async ({ request, url }) => {
     }
   }
 
-  // Increment used_count if using access code
+  // Atomically claim a use of the access code.
+  // Optimistic concurrency: the update only matches if used_count is still
+  // what we read — so two concurrent requests can't both push past max_uses.
   if (validatedCodeId) {
-    const { data: current } = await supabase
+    const { data: claimed } = await supabase
       .from('access_codes')
-      .select('used_count')
+      .update({ used_count: validatedCodeUsedCount + 1 })
       .eq('id', validatedCodeId)
-      .single();
+      .eq('used_count', validatedCodeUsedCount)
+      .select('id')
+      .maybeSingle();
 
-    await supabase
-      .from('access_codes')
-      .update({ used_count: (current?.used_count ?? 0) + 1 })
-      .eq('id', validatedCodeId);
+    if (!claimed) {
+      return new Response(JSON.stringify({ error: 'This access code was just used — please try again' }), {
+        status: 409,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
   }
 
   try {
