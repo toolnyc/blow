@@ -82,7 +82,7 @@ const menuItems = [
   >
     <div class="events-content" id="events-content">
       <p>Now Blowing</p>
-      <p class="hint">Un petite soirée à NYC</p>
+      <p class="hint" id="event-copy">a sexy daytime affair on...</p>
       <p class="hint" id="event-date">Loading...</p>
       <div class="ticket-buttons" id="ticket-buttons"></div>
     </div>
@@ -970,8 +970,10 @@ const menuItems = [
 
   // Load next event and tiers dynamically
   let currentEventSlug = '';
+  const defaultEventCopy = 'a sexy daytime affair on...';
 
   async function loadEvent() {
+    const copyEl = document.getElementById('event-copy')!;
     const dateEl = document.getElementById('event-date')!;
     const buttonsEl = document.getElementById('ticket-buttons')!;
 
@@ -985,6 +987,7 @@ const menuItems = [
       }
 
       currentEventSlug = event.slug;
+      copyEl.textContent = event.homepage_copy || defaultEventCopy;
       const d = new Date(event.date.slice(0, 10) + 'T00:00:00');
       dateEl.textContent = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 

@@ -42,6 +42,11 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
               <input type="date" id="field-date" class="ev-input" required />
             </div>
             <div class="ev-field">
+              <label class="ev-label" for="field-homepage-copy">HOMEPAGE COPY</label>
+              <textarea id="field-homepage-copy" class="ev-input ev-textarea" rows="2" maxlength="180">a sexy daytime affair on...</textarea>
+              <span class="ev-hint">Shown in the homepage Events window above the date.</span>
+            </div>
+            <div class="ev-field">
               <label class="ev-label" for="field-venue">VENUE</label>
               <input type="text" id="field-venue" class="ev-input" placeholder="TBD" />
             </div>
@@ -815,6 +820,11 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     color: var(--text-secondary);
   }
 
+  .ev-textarea {
+    min-height: 68px;
+    resize: vertical;
+  }
+
   .ev-hint {
     display: block;
     font-family: var(--font-mono);
@@ -1549,12 +1559,15 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   });
 
   // ═══ Event Management ═══
+  const defaultHomepageCopy = 'a sexy daytime affair on...';
+
   interface ManagedEvent {
     id: string;
     slug: string;
     name: string;
     date: string;
     venue: string | null;
+    homepage_copy: string | null;
     walk_in_limit: number;
     capacity: number | null;
     stripe_url: string | null;
@@ -1576,6 +1589,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   const fieldName = document.getElementById('field-name') as HTMLInputElement;
   const fieldSlug = document.getElementById('field-slug') as HTMLInputElement;
   const fieldDate = document.getElementById('field-date') as HTMLInputElement;
+  const fieldHomepageCopy = document.getElementById('field-homepage-copy') as HTMLTextAreaElement;
   const fieldVenue = document.getElementById('field-venue') as HTMLInputElement;
   const fieldCapacity = document.getElementById('field-capacity') as HTMLInputElement;
   const fieldWalkinLimit = document.getElementById('field-walkin-limit') as HTMLInputElement;
@@ -1749,6 +1763,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     formTitle.textContent = 'New Event';
     btnSubmit.textContent = 'CREATE EVENT';
     formEl.reset();
+    fieldHomepageCopy.value = defaultHomepageCopy;
     fieldWalkinLimit.value = '30';
     feedback.textContent = '';
     feedback.className = 'ev-feedback';
@@ -1774,6 +1789,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     fieldSlug.value = ev.slug;
     fieldSlug.readOnly = true;
     fieldDate.value = ev.date.slice(0, 10);
+    fieldHomepageCopy.value = ev.homepage_copy ?? defaultHomepageCopy;
     fieldVenue.value = ev.venue ?? '';
     fieldCapacity.value = ev.capacity !== null ? String(ev.capacity) : '';
     fieldWalkinLimit.value = String(ev.walk_in_limit);
@@ -1806,6 +1822,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     const slug = fieldSlug.value.trim().toLowerCase();
     const name = fieldName.value.trim();
     const date = fieldDate.value;
+    const homepageCopy = fieldHomepageCopy.value.trim();
     const venue = fieldVenue.value.trim();
     const capacity = fieldCapacity.value ? parseInt(fieldCapacity.value, 10) : null;
     const walkInLimit = fieldWalkinLimit.value ? parseInt(fieldWalkinLimit.value, 10) : 30;
@@ -1814,6 +1831,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     const method = isEdit ? 'PUT' : 'POST';
 
     const payload: Record<string, unknown> = { slug, name, date };
+    payload.homepage_copy = homepageCopy || defaultHomepageCopy;
     if (venue) payload.venue = venue;
     if (capacity !== null && !isNaN(capacity)) payload.capacity = capacity;
     payload.walk_in_limit = walkInLimit;

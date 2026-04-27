@@ -19,7 +19,7 @@ export const GET: APIRoute = async () => {
 
   const { data: event } = await supabase
     .from('events')
-    .select('slug, name, date, venue')
+    .select('slug, name, date, venue, homepage_copy')
     .gte('date', new Date().toISOString().slice(0, 10))
     .order('date', { ascending: true })
     .limit(1)

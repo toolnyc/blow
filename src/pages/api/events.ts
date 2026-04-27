@@ -4,6 +4,7 @@ import { requireAdmin } from '../../lib/auth';
 export const prerender = false;
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
+const DEFAULT_HOMEPAGE_COPY = 'a sexy daytime affair on...';
 
 interface EventRow {
   id: string;
@@ -11,6 +12,7 @@ interface EventRow {
   name: string;
   date: string;
   venue: string | null;
+  homepage_copy: string | null;
   walk_in_limit: number;
   capacity: number | null;
   stripe_url: string | null;
@@ -55,6 +57,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   const date = typeof body.date === 'string' ? body.date.trim() : '';
   const venue = typeof body.venue === 'string' ? body.venue.trim() : null;
+  const homepageCopy = typeof body.homepage_copy === 'string' && body.homepage_copy.trim()
+    ? body.homepage_copy.trim()
+    : DEFAULT_HOMEPAGE_COPY;
   const walkInLimit = typeof body.walk_in_limit === 'number' ? body.walk_in_limit : 30;
   const capacity = typeof body.capacity === 'number' ? body.capacity : null;
   const stripeUrl = typeof body.stripe_url === 'string' && body.stripe_url.trim() ? body.stripe_url.trim() : null;
@@ -94,6 +99,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       name,
       date,
       venue,
+      homepage_copy: homepageCopy,
       walk_in_limit: walkInLimit,
       capacity,
       stripe_url: stripeUrl,
@@ -139,6 +145,9 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
   }
   if (typeof body.venue === 'string') {
     updates.venue = body.venue.trim() || null;
+  }
+  if (typeof body.homepage_copy === 'string') {
+    updates.homepage_copy = body.homepage_copy.trim() || DEFAULT_HOMEPAGE_COPY;
   }
   if (typeof body.walk_in_limit === 'number') {
     updates.walk_in_limit = body.walk_in_limit;
