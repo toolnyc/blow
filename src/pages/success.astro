@@ -1,6 +1,24 @@
 ---
+import Stripe from 'stripe';
 import Layout from '../layouts/Layout.astro';
 import Window from '../components/Window.astro';
+import { requireEnv } from '../lib/env';
+
+export const prerender = false;
+
+const url = new URL(Astro.request.url);
+const sessionId = url.searchParams.get('session_id');
+let isDonation = false;
+
+if (sessionId) {
+  try {
+    const stripe = new Stripe(requireEnv('STRIPE_SECRET_KEY'));
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    isDonation = session.metadata?.type === 'donation';
+  } catch {
+    // fall through to default (ticket) variant
+  }
+}
 ---
 
 <Layout title="BlowNet ™ — You're In">
@@ -12,8 +30,17 @@ import Window from '../components/Window.astro';
   >
     <div class="success-content">
       <img src="/wordmark.svg" alt="Blow" class="wordmark" />
-      <p class="message">You're in.</p>
-      <p class="hint">Check your email for details.</p>
+      {isDonation ? (
+        <>
+          <p class="message">Thanks for your support.</p>
+          <p class="hint">Receipt will be sent to your email.</p>
+        </>
+      ) : (
+        <>
+          <p class="message">You're in.</p>
+          <p class="hint">Check your email for details.</p>
+        </>
+      )}
       <a href="/" class="back-link">
         <button>Back to BlowNet</button>
       </a>
