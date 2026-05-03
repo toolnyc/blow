@@ -8,7 +8,7 @@ import BottomNav from '../components/BottomNav.astro';
 const menuItems = [
   { id: 'subscribe-window', title: 'Subscribe', icon: '/icons/subscribe.svg' },
   { id: 'mixtapes-window', title: 'Mixtapes', icon: '/icons/mixtapes.svg' },
-  { id: 'events-window', title: 'Donations', icon: '/icons/events.svg' },
+  { id: 'events-window', title: 'Donations', icon: '/icons/dollar.svg' },
   { id: 'login-window', title: 'Admin', icon: '/icons/admin.svg' },
 ];
 ---
@@ -74,7 +74,7 @@ const menuItems = [
   <!-- Donations Window -->
   <Window
     title="Donations"
-    icon="/icons/events.svg"
+    icon="/icons/dollar.svg"
     draggable
     id="events-window"
     initialX="calc(30vw)"
