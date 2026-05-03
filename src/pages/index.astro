@@ -8,7 +8,7 @@ import BottomNav from '../components/BottomNav.astro';
 const menuItems = [
   { id: 'subscribe-window', title: 'Subscribe', icon: '/icons/subscribe.svg' },
   { id: 'mixtapes-window', title: 'Mixtapes', icon: '/icons/mixtapes.svg' },
-  { id: 'events-window', title: 'Events', icon: '/icons/events.svg' },
+  { id: 'events-window', title: 'Donations', icon: '/icons/events.svg' },
   { id: 'login-window', title: 'Admin', icon: '/icons/admin.svg' },
 ];
 ---
@@ -71,9 +71,9 @@ const menuItems = [
     </div>
   </Window>
 
-  <!-- Events Window -->
+  <!-- Donations Window -->
   <Window
-    title="Events"
+    title="Donations"
     icon="/icons/events.svg"
     draggable
     id="events-window"
@@ -82,9 +82,12 @@ const menuItems = [
   >
     <div class="events-content" id="events-content">
       <p>Now Blowing</p>
-      <p class="hint" id="event-copy">a sexy daytime affair on...</p>
-      <p class="hint" id="event-date">Loading...</p>
-      <div class="ticket-buttons" id="ticket-buttons"></div>
+      <p class="hint" id="event-copy">Saturday, May 3, 2026</p>
+      <p class="hint" id="event-date">11A–8P</p>
+      <div class="ticket-buttons" id="ticket-buttons">
+        <button class="buy-btn donation-btn" id="donation-beverage">Beverage Donation</button>
+        <button class="buy-btn donation-btn" id="donation-door">Door Donation</button>
+      </div>
     </div>
   </Window>
 
@@ -275,6 +278,13 @@ const menuItems = [
     gap: 10px;
     align-items: stretch;
     margin-top: 16px;
+  }
+
+  .donation-btn {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 12px;
+    cursor: pointer;
   }
 
   .dialog-overlay {
@@ -968,6 +978,51 @@ const menuItems = [
     loginSuccessDialog.style.display = 'none';
   });
 
+  // Donation button handler
+  const BEVERAGE_PRICE_ID = 'price_1TSyNVDuIi8AY1amvMCw7q7F';
+  const DOOR_PRICE_ID = 'price_1TSyMwDuIi8AY1ambhCnpQwe';
+
+  async function handleDonation(priceId: string, eventSlug: string, button: HTMLButtonElement) {
+    const label = button.textContent;
+    button.disabled = true;
+    button.textContent = '...';
+
+    try {
+      const response = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ price_id: priceId, event: eventSlug }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        errorMessage.textContent = data.error || 'Could not start donation checkout.';
+        errorDialog.style.display = 'flex';
+        button.disabled = false;
+        button.textContent = label;
+      }
+    } catch {
+      errorMessage.textContent = 'Network error. Please try again.';
+      errorDialog.style.display = 'flex';
+      button.disabled = false;
+      button.textContent = label;
+    }
+  }
+
+  document.getElementById('donation-beverage')?.addEventListener('click', function(this: HTMLButtonElement) {
+    handleDonation(BEVERAGE_PRICE_ID, 'may3', this);
+  });
+
+  document.getElementById('donation-door')?.addEventListener('click', function(this: HTMLButtonElement) {
+    handleDonation(DOOR_PRICE_ID, 'may3', this);
+  });
+
+  /*
+  // --- Dynamic event/tier loading (commented out — replaced by donation buttons above) ---
+
   // Load next event and tiers dynamically
   let currentEventSlug = '';
   const defaultEventCopy = 'a sexy daytime affair on...';
@@ -1099,4 +1154,7 @@ const menuItems = [
   }
 
   loadEvent();
+});
+*/
+
 </script>

@@ -59,21 +59,49 @@ export const GET: APIRoute = async () => {
 };
 
 export const POST: APIRoute = async ({ request, url }) => {
-  let tier: string;
+  let tier: string | undefined;
   let quantity: number;
   let event: string;
   let accessCode: string | undefined;
+  let priceId: string | undefined;
   try {
     const body = await request.json();
     tier = body.tier;
     quantity = body.quantity ?? 1;
     event = body.event ?? '';
     accessCode = typeof body.access_code === 'string' ? body.access_code.trim().toUpperCase() : undefined;
+    priceId = typeof body.price_id === 'string' ? body.price_id.trim() : undefined;
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
+  }
+
+  // Fast path: direct price_id donation — bypass tier lookup entirely
+  if (priceId) {
+    const origin = `${url.protocol}//${url.host}`;
+    try {
+      const session = await getStripe().checkout.sessions.create({
+        line_items: [{ price: priceId, quantity: 1 }],
+        mode: 'payment',
+        success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/`,
+        metadata: { type: 'donation', event: event || 'donation' },
+      });
+
+      return new Response(JSON.stringify({ url: session.url }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (err) {
+      console.error('Stripe checkout error (donation):', err);
+      void notifyError({ endpoint: 'create-checkout', message: String(err), context: `Donation price: ${priceId}` });
+      return new Response(JSON.stringify({ error: 'Failed to create checkout session' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
   }
 
   if (!event || typeof event !== 'string') {
