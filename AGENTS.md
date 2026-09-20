@@ -1,3 +1,7 @@
+> **Where things live** - Client: - | Bucket: `lab/` | Dropbox: `Projects/Blow/` | Registry: `~/Code/toolhub/CoS/REGISTRY.md`
+
+@import /Users/pete/Code/.agent/conventions.md
+
 # AGENTS.md — Blow
 
 > Primary instruction source for all AI agents working on this project.
