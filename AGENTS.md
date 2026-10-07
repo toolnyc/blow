@@ -1,4 +1,4 @@
-> **Where things live** - Client: - | Bucket: `lab/` | Dropbox: `Projects/Blow/` | Registry: `~/Code/toolhub/CoS/REGISTRY.md`
+> **Where things live** - Client: - | Bucket: `lab/` | Dropbox: `Projects/Blow/` | Registry: Notion "Repos" DB (IDs in `~/Code/toolhub/CoS/NOTION.md`)
 
 @import /Users/pete/Code/.agent/conventions.md
 
@@ -142,23 +142,12 @@ Email list. RLS enabled.
 
 ## Knowledge Base
 
-Session reports and project knowledge stored in Obsidian:
+Durable project knowledge lives in two places:
 
-```
-/Users/pete/Dropbox/Notes/Obsidian/Clubstack/Blow/
-├── Blow Roadmap.md
-├── Phase 0 — Agentic Build Pattern.md
-├── Post-Mortem — March 21 2026.md
-├── Epic A–J (planned features)
-└── Session Reports/
-    └── Session — YYYY-MM-DD <title>.md
-```
+- **This repo** — `AGENTS.md` for conventions, `.claude/epics/` for planned features.
+- **Notion Tool HQ > Lab** — roadmap, post-mortems, decisions worth keeping across sessions. Write there only when Pete asks; IDs in `~/Code/toolhub/CoS/NOTION.md`.
 
-**Obsidian write pattern:**
-```bash
-mkdir -p "/Users/pete/Dropbox/Notes/Obsidian/Clubstack/Blow/Session Reports"
-# Then use Write tool to create the markdown file
-```
+Session summaries stay in chat. Older notes (roadmap, Phase 0 pattern, March 21 post-mortem, Epics A–J) are archived at `~/Dropbox/Notes/Obsidian/Clubstack/Blow/` — read-only reference, no longer updated.
 
 ---
 
@@ -172,7 +161,7 @@ All skills live in `.claude/skills/`. Sentinels enforce execution order.
 | `/feature` | `epic-created` | `feature-active` | Build the planned feature |
 | `/db-migrate` | `feature-active` | — | Create and apply a Supabase migration |
 | `/verify` | nothing | `verify-passed` | Run `pnpm build`, fix errors |
-| `/session-close` | nothing | clears all | Capture learnings to Obsidian, clear state |
+| `/session-close` | nothing | clears all | Summarize the session, fix stale docs, clear state |
 
 ### Workflow
 
@@ -190,7 +179,7 @@ All skills live in `.claude/skills/`. Sentinels enforce execution order.
   → Sets verify-passed sentinel (gates git commit)
 
 /session-close
-  → Writes session report to Obsidian
+  → Summarizes the session in chat, fixes stale docs
   → Clears all sentinels
 ```
 
