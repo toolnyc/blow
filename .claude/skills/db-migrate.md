@@ -1,1 +1,0 @@
-../../.agent/skills/db-migrate/SKILL.md
