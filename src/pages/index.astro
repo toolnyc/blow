@@ -8,7 +8,7 @@ import BottomNav from '../components/BottomNav.astro';
 const menuItems = [
   { id: 'subscribe-window', title: 'Subscribe', icon: '/icons/subscribe.svg' },
   { id: 'mixtapes-window', title: 'Mixtapes', icon: '/icons/mixtapes.svg' },
-  { id: 'events-window', title: 'Donations', icon: '/icons/dollar.svg' },
+  { id: 'events-window', title: 'Tickets', icon: '/icons/events.svg' },
   { id: 'login-window', title: 'Admin', icon: '/icons/admin.svg' },
 ];
 ---
@@ -46,14 +46,10 @@ const menuItems = [
     <div class="mixtapes-content">
       <div class="audio-player" id="audio-player">
         <ul class="track-list tree-view" id="track-list">
-          <li class="track-item active" data-index="0">Chez de Milo</li>
-          <li class="track-item" data-index="1">True Vine</li>
-          <li class="track-item" data-index="2">Amelia Holt &amp; Seth Magoon</li>
-          <li class="track-item" data-index="3">Second Contact</li>
-          <li class="track-item" data-index="4">Conduit</li>
+          <li class="track-item active" data-index="0">Conduit</li>
         </ul>
         <div class="now-playing">
-          <span class="track-title" id="track-title">Amelia Holt &amp; Seth Magoon</span>
+          <span class="track-title" id="track-title">Conduit</span>
         </div>
         <div class="progress-row">
           <span class="time" id="time-current">0:00</span>
@@ -71,10 +67,10 @@ const menuItems = [
     </div>
   </Window>
 
-  <!-- Donations Window -->
+  <!-- Tickets Window -->
   <Window
-    title="Donations"
-    icon="/icons/dollar.svg"
+    title="Tickets"
+    icon="/icons/events.svg"
     draggable
     id="events-window"
     initialX="calc(30vw)"
@@ -82,11 +78,11 @@ const menuItems = [
   >
     <div class="events-content" id="events-content">
       <p>Now Blowing</p>
-      <p class="hint" id="event-copy">Saturday, May 3, 2026</p>
-      <p class="hint" id="event-date">10h–20h</p>
+      <p class="hint" id="event-copy">Saturday, November 14, 2026</p>
       <div class="ticket-buttons" id="ticket-buttons">
-        <button class="buy-btn donation-btn" id="donation-beverage">Beverage Donation</button>
-        <button class="buy-btn donation-btn" id="donation-door">Door Donation</button>
+        <a href="https://www.studiobakery.nyc/events" target="_blank" rel="noopener noreferrer">
+          <button class="buy-btn">Get Tickets</button>
+        </a>
       </div>
     </div>
   </Window>
@@ -278,13 +274,6 @@ const menuItems = [
     gap: 10px;
     align-items: stretch;
     margin-top: 16px;
-  }
-
-  .donation-btn {
-    width: 100%;
-    padding: 8px 12px;
-    font-size: 12px;
-    cursor: pointer;
   }
 
   .dialog-overlay {
@@ -776,10 +765,6 @@ const menuItems = [
 
   // Audio player logic
   const tracks = [
-    { title: 'Chez de Milo', url: 'https://archive.org/download/chez-de-milo-phonica-mix/Chez%20de%20Milo%20Phonica%20Mix.mp3' },
-    { title: 'True Vine', url: 'https://archive.org/download/blow-vine-verbs/True%20Vine%20-%20VERBS_mstr.mp3' },
-    { title: 'Amelia Holt & Seth Magoon', url: 'https://archive.org/download/blow-amelia-seth-splxia/Amelia%20%20%20Seth%2010.24.2025%20Solarplexia.mp3' },
-    { title: 'Second Contact', url: 'https://archive.org/download/sc-4-ht-nowadays/SC4HT-Nowadays.mp3' },
     { title: 'Conduit', url: 'https://archive.org/download/conduit-03.21.2026-blow-normalized/Conduit%2003.21.2026%20Blow%20-%20normalized.mp3' },
   ];
 
@@ -976,48 +961,6 @@ const menuItems = [
 
   loginSuccessOk?.addEventListener('click', () => {
     loginSuccessDialog.style.display = 'none';
-  });
-
-  // Donation button handler
-  const BEVERAGE_PRICE_ID = 'price_1TSyNVDuIi8AY1amvMCw7q7F';
-  const DOOR_PRICE_ID = 'price_1TSyMwDuIi8AY1ambhCnpQwe';
-
-  async function handleDonation(priceId: string, eventSlug: string, button: HTMLButtonElement) {
-    const label = button.textContent;
-    button.disabled = true;
-    button.textContent = '...';
-
-    try {
-      const response = await fetch('/api/create-checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ price_id: priceId, event: eventSlug }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.url) {
-        window.location.href = data.url;
-      } else {
-        errorMessage.textContent = data.error || 'Could not start donation checkout.';
-        errorDialog.style.display = 'flex';
-        button.disabled = false;
-        button.textContent = label;
-      }
-    } catch {
-      errorMessage.textContent = 'Network error. Please try again.';
-      errorDialog.style.display = 'flex';
-      button.disabled = false;
-      button.textContent = label;
-    }
-  }
-
-  document.getElementById('donation-beverage')?.addEventListener('click', function(this: HTMLButtonElement) {
-    handleDonation(BEVERAGE_PRICE_ID, 'may3', this);
-  });
-
-  document.getElementById('donation-door')?.addEventListener('click', function(this: HTMLButtonElement) {
-    handleDonation(DOOR_PRICE_ID, 'may3', this);
   });
 
   /*
